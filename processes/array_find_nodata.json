@@ -1,0 +1,65 @@
+{
+    "id": "array_find_nodata",
+    "summary": "Find no-data values in an array",
+    "description": "Get the index of the first no-data (`null`) value in an array.",
+    "categories": [
+        "arrays"
+    ],
+    "parameters": [
+        {
+            "name": "data",
+            "description": "List to find the value in.",
+            "schema": {
+                "type": "array",
+                "items": {
+                    "description": "Any data type is allowed."
+                }
+            }
+        }
+    ],
+    "returns": {
+        "description": "The index of the first element with a no-data value. If only data values are available, `null` is returned.",
+        "schema": [
+            {
+                "type": "null"
+            },
+            {
+                "type": "integer",
+                "minimum": 0
+            }
+        ]
+    },
+    "process_graph": {
+        "apply": {
+            "process_id": "array_apply",
+            "arguments": {
+                "data": {
+                    "from_parameter": "data"
+                },
+                "process": {
+                    "process_graph": {
+                        "is_null": {
+                            "process_id": "is_nodata",
+                            "arguments": {
+                                "x": {
+                                    "from_parameter": "x"
+                                }
+                            },
+                            "result": true
+                        }
+                    }
+                }
+            }
+        },
+        "find": {
+            "process_id": "array_find",
+            "arguments": {
+                "data": {
+                    "from_node": "apply"
+                },
+                "value": true
+            },
+            "result": true
+        }
+    }
+}
