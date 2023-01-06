@@ -9,69 +9,16 @@
         ],
         "id": "SENTINEL2_L1C_SENTINELHUB",
         "spatial_extent": null,
-        "temporal_extent": [
-          "2021-05-18",
-          "2021-07-18"
-        ]
+        "temporal_extent": {
+          "from_parameter": "After_date"
+        }
       }
     },
     "chunkpolygon1": {
       "process_id": "chunk_polygon",
       "arguments": {
         "chunks": {
-          "type": "FeatureCollection",
-          "name": "cal_aoi_v2",
-          "crs": {
-            "type": "name",
-            "properties": {
-              "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
-            }
-          },
-          "features": [
-            {
-              "type": "Feature",
-              "properties": {
-                "id": 1
-              },
-              "geometry": {
-                "type": "MultiPolygon",
-                "coordinates": [
-                  [
-                    [
-                      [
-                        -122.1673851543377,
-                        40.11562915919073
-                      ],
-                      [
-                        -122.1556597220749,
-                        40.12171451011193
-                      ],
-                      [
-                        -122.1371068229249,
-                        40.10514058687127
-                      ],
-                      [
-                        -122.1417079419141,
-                        40.095690976904216
-                      ],
-                      [
-                        -122.1623387657689,
-                        40.10523953566674
-                      ],
-                      [
-                        -122.1623387657689,
-                        40.10523953566674
-                      ],
-                      [
-                        -122.1673851543377,
-                        40.11562915919073
-                      ]
-                    ]
-                  ]
-                ]
-              }
-            }
-          ]
+          "from_parameter": "aoi"
         },
         "data": {
           "from_node": "loadcollection1"
@@ -124,69 +71,16 @@
         ],
         "id": "SENTINEL2_L1C_SENTINELHUB",
         "spatial_extent": null,
-        "temporal_extent": [
-          "2021-01-12",
-          "2021-03-12"
-        ]
+        "temporal_extent": {
+          "from_parameter": "Previous_date"
+        }
       }
     },
     "chunkpolygon2": {
       "process_id": "chunk_polygon",
       "arguments": {
         "chunks": {
-          "type": "FeatureCollection",
-          "name": "cal_aoi_v2",
-          "crs": {
-            "type": "name",
-            "properties": {
-              "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
-            }
-          },
-          "features": [
-            {
-              "type": "Feature",
-              "properties": {
-                "id": 1
-              },
-              "geometry": {
-                "type": "MultiPolygon",
-                "coordinates": [
-                  [
-                    [
-                      [
-                        -122.1673851543377,
-                        40.11562915919073
-                      ],
-                      [
-                        -122.1556597220749,
-                        40.12171451011193
-                      ],
-                      [
-                        -122.1371068229249,
-                        40.10514058687127
-                      ],
-                      [
-                        -122.1417079419141,
-                        40.095690976904216
-                      ],
-                      [
-                        -122.1623387657689,
-                        40.10523953566674
-                      ],
-                      [
-                        -122.1623387657689,
-                        40.10523953566674
-                      ],
-                      [
-                        -122.1673851543377,
-                        40.11562915919073
-                      ]
-                    ]
-                  ]
-                ]
-              }
-            }
-          ]
+          "from_parameter": "aoi"
         },
         "data": {
           "from_node": "loadcollection2"
