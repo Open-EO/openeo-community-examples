@@ -1,6 +1,6 @@
 # Python Client - Examples and Code Snippets
 
-This folder contains process graphs and code snippets for the openEO Python client.
+This folder contains code snippets for the openEO Python client.
 
 ## Overview
 
