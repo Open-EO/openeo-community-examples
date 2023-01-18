@@ -1,21 +1,44 @@
 {
-  "process_graph": {
-    "loadcollection1": {
-      "process_id": "load_collection",
-      "arguments": {
-        "bands": [
-          "B08",
-          "B12"
-        ],
-        "id": "SENTINEL2_L1C_SENTINELHUB",
-        "spatial_extent": null,
-        "temporal_extent": {
-          "from_parameter": "After_date"
-        }
+  "namespace": "user",
+  "description": "Classical Normalized Burnt Ratio(NBR) difference is performed using VITO backend on a chunk polygon.",
+  "id": "NBR_chunk_polygons",
+  "summary": "Burnt area mapping using chunk_polygon on UDF",
+  "returns": "Return an RGB image as Geotiff",
+  "links": [
+    {
+      "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/NBR_chunk_polygons",
+      "rel": "canonical",
+      "title": "Public URL for user-defined process 'NBR_chunk_polygons'"
+    }
+  ],
+  "parameters": [
+    {
+      "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval.The second element is the end of the temporal interval. The specified instance in time is excluded from the interval.The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+      "name": "Previous_date",
+      "schema": {
+        "subtype": "temporal-interval",
+        "type": "array"
       }
     },
+    {
+      "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval.The second element is the end of the temporal interval. The specified instance in time is excluded from the interval.The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+      "name": "After_date",
+      "schema": {
+        "subtype": "temporal-interval",
+        "type": "array"
+      }
+    },
+    {
+      "description": "Spatial extent for area of interst to calculate NBR, specified as GEOJSON.",
+      "name": "aoi",
+      "schema": {
+        "subtype": "geojson",
+        "type": "object"
+      }
+    }
+  ],
+  "process_graph": {
     "chunkpolygon1": {
-      "process_id": "chunk_polygon",
       "arguments": {
         "chunks": {
           "from_parameter": "aoi"
@@ -26,7 +49,6 @@
         "process": {
           "process_graph": {
             "runudf1": {
-              "process_id": "run_udf",
               "arguments": {
                 "data": {
                   "from_parameter": "data"
@@ -34,50 +56,15 @@
                 "runtime": "python",
                 "udf": "\nfrom openeo.udf import XarrayDataCube\n\n\ndef apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:\n    # access the underlying xarray\n    inarr = cube.get_array()\n\n    # nbr\n    nir = inarr.loc[:,'B08']\n    swir = inarr.loc[:,'B12']\n    nbr = (nir-swir)/(nir+swir)\n    \n    # extend bands dim\n    nbr=nbr.expand_dims(dim='bands', axis=-3).assign_coords(bands=['nbr'])\n    \n    # wrap back to datacube and return\n    return XarrayDataCube(nbr)\n"
               },
+              "process_id": "run_udf",
               "result": true
             }
           }
         }
-      }
-    },
-    "reducedimension1": {
-      "process_id": "reduce_dimension",
-      "arguments": {
-        "data": {
-          "from_node": "chunkpolygon1"
-        },
-        "dimension": "t",
-        "reducer": {
-          "process_graph": {
-            "mean1": {
-              "process_id": "mean",
-              "arguments": {
-                "data": {
-                  "from_parameter": "data"
-                }
-              },
-              "result": true
-            }
-          }
-        }
-      }
-    },
-    "loadcollection2": {
-      "process_id": "load_collection",
-      "arguments": {
-        "bands": [
-          "B08",
-          "B12"
-        ],
-        "id": "SENTINEL2_L1C_SENTINELHUB",
-        "spatial_extent": null,
-        "temporal_extent": {
-          "from_parameter": "Previous_date"
-        }
-      }
+      },
+      "process_id": "chunk_polygon"
     },
     "chunkpolygon2": {
-      "process_id": "chunk_polygon",
       "arguments": {
         "chunks": {
           "from_parameter": "aoi"
@@ -88,7 +75,6 @@
         "process": {
           "process_graph": {
             "runudf2": {
-              "process_id": "run_udf",
               "arguments": {
                 "data": {
                   "from_parameter": "data"
@@ -96,36 +82,43 @@
                 "runtime": "python",
                 "udf": "\nfrom openeo.udf import XarrayDataCube\n\n\ndef apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:\n    # access the underlying xarray\n    inarr = cube.get_array()\n\n    # nbr\n    nir = inarr.loc[:,'B08']\n    swir = inarr.loc[:,'B12']\n    nbr = (nir-swir)/(nir+swir)\n    \n    # extend bands dim\n    nbr=nbr.expand_dims(dim='bands', axis=-3).assign_coords(bands=['nbr'])\n    \n    # wrap back to datacube and return\n    return XarrayDataCube(nbr)\n"
               },
+              "process_id": "run_udf",
               "result": true
             }
           }
         }
-      }
+      },
+      "process_id": "chunk_polygon"
     },
-    "reducedimension2": {
-      "process_id": "reduce_dimension",
+    "loadcollection1": {
       "arguments": {
-        "data": {
-          "from_node": "chunkpolygon2"
-        },
-        "dimension": "t",
-        "reducer": {
-          "process_graph": {
-            "mean2": {
-              "process_id": "mean",
-              "arguments": {
-                "data": {
-                  "from_parameter": "data"
-                }
-              },
-              "result": true
-            }
-          }
+        "bands": [
+          "B08",
+          "B12"
+        ],
+        "id": "SENTINEL2_L1C_SENTINELHUB",
+        "spatial_extent": null,
+        "temporal_extent": {
+          "from_parameter": "After_date"
         }
-      }
+      },
+      "process_id": "load_collection"
+    },
+    "loadcollection2": {
+      "arguments": {
+        "bands": [
+          "B08",
+          "B12"
+        ],
+        "id": "SENTINEL2_L1C_SENTINELHUB",
+        "spatial_extent": null,
+        "temporal_extent": {
+          "from_parameter": "Previous_date"
+        }
+      },
+      "process_id": "load_collection"
     },
     "mergecubes1": {
-      "process_id": "merge_cubes",
       "arguments": {
         "cube1": {
           "from_node": "reducedimension1"
@@ -136,7 +129,6 @@
         "overlap_resolver": {
           "process_graph": {
             "subtract1": {
-              "process_id": "subtract",
               "arguments": {
                 "x": {
                   "from_parameter": "x"
@@ -145,12 +137,60 @@
                   "from_parameter": "y"
                 }
               },
+              "process_id": "subtract",
               "result": true
             }
           }
         }
       },
+      "process_id": "merge_cubes",
       "result": true
+    },
+    "reducedimension1": {
+      "arguments": {
+        "data": {
+          "from_node": "chunkpolygon1"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "mean1": {
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "process_id": "mean",
+              "result": true
+            }
+          }
+        }
+      },
+      "process_id": "reduce_dimension"
+    },
+    "reducedimension2": {
+      "arguments": {
+        "data": {
+          "from_node": "chunkpolygon2"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "mean2": {
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "process_id": "mean",
+              "result": true
+            }
+          }
+        }
+      },
+      "process_id": "reduce_dimension"
     }
-  }
+  },
+  "public": true
+
 }

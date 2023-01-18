@@ -1,7 +1,68 @@
 {
+  "namespace": "user",
+  "description": "Flood extent can be determined using a change detection approach on Sentinel-1 data. In this notebook we have tried in adopting (UN SPIDER's) recommendation practice for computing flood extent by implementing openeo process.Function) UDF.",
+  "id": "Flood_SAR",
+  "summary": "Flood extent visualization applying threshold to SAR images",
+  "returns": "Return an RGB image as Geotiff",
+  "links": [
+    {
+      "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/Flood_SAR",
+      "rel": "canonical",
+      "title": "Public URL for user-defined process 'Flood_SAR'"
+    }
+  ],
+  "parameters": [
+    {
+      "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval.The second element is the end of the temporal interval. The specified instance in time is excluded from the interval.The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+      "name": "Previous_date",
+      "schema": {
+        "subtype": "temporal-interval",
+        "type": "array"
+      }
+    },
+    {
+      "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval.The second element is the end of the temporal interval. The specified instance in time is excluded from the interval.The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+      "name": "After_date",
+      "schema": {
+        "subtype": "temporal-interval",
+        "type": "array"
+      }
+    },
+    {
+      "description": "Spatial extent for area of interst to calculate NBR, specified as GEOJSON.",
+      "name": "aoi",
+      "schema": {
+        "subtype": "geojson",
+        "type": "object"
+      }
+    }
+  ],
   "process_graph": {
+    "apply1": {
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes1"
+        },
+        "process": {
+          "process_graph": {
+            "runudf1": {
+              "arguments": {
+                "data": {
+                  "from_parameter": "x"
+                },
+                "runtime": "Python",
+                "udf": "\nfrom openeo.udf import XarrayDataCube\n\ndef apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:\n    array = cube.get_array()\n    \n    # UN defined difference threshold\n    array.values = np.where(array > 1.5, 1, 0)\n    return cube\n"
+              },
+              "process_id": "run_udf",
+              "result": true
+            }
+          }
+        }
+      },
+      "process_id": "apply",
+      "result": true
+    },
     "loadcollection1": {
-      "process_id": "load_collection",
       "arguments": {
         "bands": [
           "VV"
@@ -11,13 +72,13 @@
           "sat:orbit_state": {
             "process_graph": {
               "eq1": {
-                "process_id": "eq",
                 "arguments": {
                   "x": {
                     "from_parameter": "value"
                   },
                   "y": "ascending"
                 },
+                "process_id": "eq",
                 "result": true
               }
             }
@@ -29,32 +90,10 @@
         "temporal_extent": {
           "from_parameter": "After_date"
         }
-      }
-    },
-    "reducedimension1": {
-      "process_id": "reduce_dimension",
-      "arguments": {
-        "data": {
-          "from_node": "loadcollection1"
-        },
-        "dimension": "t",
-        "reducer": {
-          "process_graph": {
-            "mean1": {
-              "process_id": "mean",
-              "arguments": {
-                "data": {
-                  "from_parameter": "data"
-                }
-              },
-              "result": true
-            }
-          }
-        }
-      }
+      },
+      "process_id": "load_collection"
     },
     "loadcollection2": {
-      "process_id": "load_collection",
       "arguments": {
         "bands": [
           "VV"
@@ -64,13 +103,13 @@
           "sat:orbit_state": {
             "process_graph": {
               "eq2": {
-                "process_id": "eq",
                 "arguments": {
                   "x": {
                     "from_parameter": "value"
                   },
                   "y": "ascending"
                 },
+                "process_id": "eq",
                 "result": true
               }
             }
@@ -82,32 +121,10 @@
         "temporal_extent": {
           "from_parameter": "Previous_date"
         }
-      }
-    },
-    "reducedimension2": {
-      "process_id": "reduce_dimension",
-      "arguments": {
-        "data": {
-          "from_node": "loadcollection2"
-        },
-        "dimension": "t",
-        "reducer": {
-          "process_graph": {
-            "mean2": {
-              "process_id": "mean",
-              "arguments": {
-                "data": {
-                  "from_parameter": "data"
-                }
-              },
-              "result": true
-            }
-          }
-        }
-      }
+      },
+      "process_id": "load_collection"
     },
     "mergecubes1": {
-      "process_id": "merge_cubes",
       "arguments": {
         "cube1": {
           "from_node": "reducedimension1"
@@ -118,7 +135,6 @@
         "overlap_resolver": {
           "process_graph": {
             "divide1": {
-              "process_id": "divide",
               "arguments": {
                 "x": {
                   "from_parameter": "x"
@@ -127,35 +143,58 @@
                   "from_parameter": "y"
                 }
               },
-              "result": true
-            }
-          }
-        }
-      }
-    },
-    "apply1": {
-      "process_id": "apply",
-      "arguments": {
-        "data": {
-          "from_node": "mergecubes1"
-        },
-        "process": {
-          "process_graph": {
-            "runudf1": {
-              "process_id": "run_udf",
-              "arguments": {
-                "data": {
-                  "from_parameter": "x"
-                },
-                "runtime": "Python",
-                "udf": "\nfrom openeo.udf import XarrayDataCube\n\ndef apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:\n    array = cube.get_array()\n    \n    # UN defined difference threshold\n    array.values = np.where(array > 1.5, 1, 0)\n    return cube\n"
-              },
+              "process_id": "divide",
               "result": true
             }
           }
         }
       },
-      "result": true
+      "process_id": "merge_cubes"
+    },
+    "reducedimension1": {
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection1"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "mean1": {
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "process_id": "mean",
+              "result": true
+            }
+          }
+        }
+      },
+      "process_id": "reduce_dimension"
+    },
+    "reducedimension2": {
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection2"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "mean2": {
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "process_id": "mean",
+              "result": true
+            }
+          }
+        }
+      },
+      "process_id": "reduce_dimension"
     }
-  }
+  },
+  "public": true
 }
