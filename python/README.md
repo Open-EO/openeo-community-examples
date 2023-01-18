@@ -22,4 +22,4 @@ Environments: `Python` (plain Python code), `Jupyter` (e.g. Notebooks)
 
 ## Contributing
 
-* OpenEO/EOplaza users can also send a pull request in this repository as either a python file/notebook for their usecase. Showcasing their usecases are highly encouraged.
+* OpenEO users can send a pull request to this repository as either a Python file or a Jupyter notebook for their usecase. Submissions should be in separate folders. Showcasing their usecases are highly encouraged.
