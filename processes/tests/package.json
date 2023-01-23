@@ -1,0 +1,30 @@
+{
+  "name": "@openeo/processes",
+  "version": "1.2.0",
+  "author": "openEO Consortium",
+  "contributors": [
+    {
+      "name": "Matthias Mohr"
+    }
+  ],
+  "license": "Apache-2.0",
+  "description": "Validates the processes specified in this repository.",
+  "homepage": "http://openeo.org",
+  "bugs": {
+    "url": "https://github.com/Open-EO/openeo-processes/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Open-EO/openeo-processes.git"
+  },
+  "devDependencies": {
+    "@openeo/processes-lint": "^0.1.3",
+    "concat-json-files": "^1.1.0",
+    "http-server": "^14.1.1"
+  },
+  "scripts": {
+    "test": "openeo-processes-lint testConfig.json",
+    "generate": "concat-json-files \"../{*,proposals/*}.json\" -t \"processes.json\"",
+    "start": "npm run generate && http-server -p 9876 -o docs.html -c-1"
+  }
+}
