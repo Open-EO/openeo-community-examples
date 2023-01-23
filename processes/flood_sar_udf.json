@@ -1,14 +1,12 @@
 {
   "namespace": "user",
   "description": "Flood extent can be determined using a change detection approach on Sentinel-1 data. In this notebook we have tried in adopting (UN SPIDER's) recommendation practice for computing flood extent by implementing openeo process.Function) UDF.",
-  "id": "Flood_SAR",
-  "summary": "Flood extent visualization applying threshold to SAR images",
-  "returns": "Return an RGB image as Geotiff",
+  "id": "flood_sar_udf",
   "links": [
     {
-      "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/Flood_SAR",
+      "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/flood_sar_udf",
       "rel": "canonical",
-      "title": "Public URL for user-defined process 'Flood_SAR'"
+      "title": "Public URL for user-defined process 'flood_sar_udf'"
     }
   ],
   "parameters": [
@@ -196,5 +194,7 @@
       "process_id": "reduce_dimension"
     }
   },
-  "public": true
+  "public": true,
+  "returns": "Return an RGB image as Geotiff",
+  "summary": "Flood extent visualization applying threshold to SAR images"
 }
