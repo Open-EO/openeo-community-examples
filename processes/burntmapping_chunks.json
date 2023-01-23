@@ -1,5 +1,5 @@
 {
-  "description": "Classical Normalized Burnt Ratio(NBR) difference is performed using VITO backend on a chunk of polygons.",
+  "description": "Classical Normalized Burnt Ratio(NBR) difference is performed on a chunk of polygons.",
   "id": "burntmapping_chunks",
   "links": [
     {
