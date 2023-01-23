@@ -1,0 +1,10 @@
+{
+	"folder": "../",
+	"proposalsFolder": null,
+	"ignoredWords": ".words",
+	"anyOfRequired": [],
+	"subtypeSchemas": null,
+	"checkSubtypeSchemas": false,
+	"forbidDeprecatedTypes": false,
+	"verbose": false
+}
