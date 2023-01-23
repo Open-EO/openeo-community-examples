@@ -1,5 +1,4 @@
 {
-  "namespace": "user",
   "description": "Flood extent can be determined using a change detection approach on Sentinel-1 data. In this notebook we have tried in adopting (UN SPIDER's) recommendation practice for computing flood extent by implementing openeo process.Function) UDF.",
   "id": "flood_sar_udf",
   "links": [

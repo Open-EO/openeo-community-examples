@@ -1,5 +1,4 @@
 {
-  "namespace": "user",
   "description": "Performed comparative study between pre and post image for Colong during 2021 flood. A simple technique to subtract pre and post image is done to know the change in water content due to flood in that region.",
   "id": "flood_ndwi",
   "links": [

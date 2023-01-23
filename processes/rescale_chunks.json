@@ -1,5 +1,4 @@
 {
-  "namespace": "user",
   "description": "It is a simple process to rescale Sentinel 2 RGB image along with the use of chunk_polygon  apply with a (User Defined Function) UDF.",
   "id": "rescale_chunks",
   "links": [

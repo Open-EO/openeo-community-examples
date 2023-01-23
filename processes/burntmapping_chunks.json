@@ -1,5 +1,4 @@
 {
-  "namespace": "user",
   "description": "Classical Normalized Burnt Ratio(NBR) difference is performed using VITO backend on a chunk polygon.",
   "id": "burntmapping_chunks",
   "links": [
