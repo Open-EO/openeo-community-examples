@@ -18,7 +18,7 @@
       }
     },
     {
-      "description": "Spatial extent for area of interst to calculate NBR, specified as GEOJSON.",
+      "description": "Spatial extent for area of interest to calculate NBR, specified as GEOJSON.",
       "name": "aoi",
       "schema": {
         "subtype": "geojson",
