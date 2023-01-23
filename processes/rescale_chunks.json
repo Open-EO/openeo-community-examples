@@ -92,7 +92,6 @@
       "result": true
     }
   },
-  "public": true,
   "returns": "`true` if the list contains a no-data value, false` otherwise.",
   "summary": "Rescaling of RGB within chunk of polygons."
 }

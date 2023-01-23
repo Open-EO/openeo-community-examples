@@ -193,7 +193,6 @@
       "process_id": "reduce_dimension"
     }
   },
-  "public": true,
   "returns": "Return an RGB image as Geotiff.",
   "summary": "Flood extent visualization applying threshold to SAR images."
 }

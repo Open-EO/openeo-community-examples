@@ -116,7 +116,6 @@
       "result": true
     }
   },
-  "public": true,
   "returns": "Return an RGB image as Geotiff.",
   "summary": "Comparing pre and post flood NDWI."
 }

@@ -188,7 +188,6 @@
       "process_id": "reduce_dimension"
     }
   },
-  "public": true,
   "returns": "Return an RGB image as Geotiff.",
   "summary": "Burnt area mapping using chunk_polygon on UDF."
 }
