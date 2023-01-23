@@ -1,5 +1,5 @@
 {
-  "description": "It is a simple process to rescale Sentinel 2 RGB image along with the use of chunk_polygon  apply with a (User Defined Function) UDF.",
+  "description": "It is a simple process to rescale Sentinel 2 RGB image along with the use of chunk_polygon apply with a (User Defined Function) UDF.",
   "id": "rescale_chunks",
   "links": [
     {
@@ -10,7 +10,7 @@
   ],
   "parameters": [
     {
-      "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval.The second element is the end of the temporal interval. The specified instance in time is excluded from the interval.The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+      "description": "Left-closed temporal interval, i.e. an array with exactly two elements: The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
       "name": "date",
       "schema": {
         "subtype": "temporal-interval",
@@ -94,5 +94,5 @@
   },
   "public": true,
   "returns": "`true` if the list contains a no-data value, false` otherwise.",
-  "summary": "Rescaling of RGB within chunk of polygons"
+  "summary": "Rescaling of RGB within chunk of polygons."
 }

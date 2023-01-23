@@ -10,7 +10,7 @@
   ],
   "parameters": [
     {
-      "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval.The second element is the end of the temporal interval. The specified instance in time is excluded from the interval.The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+      "description": "Left-closed temporal interval, i.e. an array with exactly two elements: The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
       "name": "Previous_date",
       "schema": {
         "subtype": "temporal-interval",
@@ -18,7 +18,7 @@
       }
     },
     {
-      "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval.The second element is the end of the temporal interval. The specified instance in time is excluded from the interval.The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+      "description": "Left-closed temporal interval, i.e. an array with exactly two elements: The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
       "name": "After_date",
       "schema": {
         "subtype": "temporal-interval",
@@ -189,6 +189,6 @@
     }
   },
   "public": true,
-  "returns": "Return an RGB image as Geotiff",
-  "summary": "Burnt area mapping using chunk_polygon on UDF"
+  "returns": "Return an RGB image as Geotiff.",
+  "summary": "Burnt area mapping using chunk_polygon on UDF."
 }
