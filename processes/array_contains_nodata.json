@@ -1,7 +1,7 @@
 {
     "id": "array_contains_nodata",
     "summary": "Check for no-data values in an array",
-    "description": "Check whether the array contains a no-data (`null`) value.",
+    "description": "Check whether the given array contains a no-data (`null`) value or not.",
     "categories": [
         "arrays"
     ],

@@ -1,0 +1,19 @@
+name: Test Processes
+on: 
+  push:
+    paths:
+      - processes/**
+  pull_request:
+    paths:
+      - processes/**
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v2
+      - name: Run tests
+        run: |
+          npm install
+          npm test
+        working-directory: processes/tests
