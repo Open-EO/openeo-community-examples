@@ -6,5 +6,6 @@
 	"subtypeSchemas": null,
 	"checkSubtypeSchemas": false,
 	"forbidDeprecatedTypes": false,
+	"checkProcessLinks": false,
 	"verbose": false
 }

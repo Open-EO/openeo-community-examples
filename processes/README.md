@@ -6,8 +6,9 @@ This folder contains user-defined processes that can be run by any openEO client
 
 | ID | Categories | Summary |
 | -- | ---------- | ------- |
-| [array_contains_nodata](array_contains_nodata.json) | arrays | Check for no-data values in an array |
-| [array_find_nodata](array_find_nodata.json)         | arrays | Find no-data values in an array |
+| [array_contains_nodata](array_contains_nodata.json) | arrays               | Check for no-data values in an array |
+| [array_find_nodata](array_find_nodata.json)         | arrays               | Find no-data values in an array |
+| [crop_polygon](crop_polygon.json)                   | cubes, filter, masks | Crop (filter and mask) using a polygon |
 
 ## Contributing
 
