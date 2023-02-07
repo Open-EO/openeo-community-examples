@@ -20,4 +20,4 @@ Environments: `Python` (plain Python code), `Jupyter` (e.g. Notebooks)
 
 ## Contributing
 
-* OpenEO users can send a pull request to this repository as either a Python file or a Jupyter notebook for their usecase. Submissions should be in separate folders. Showcasing their usecases are highly encouraged.
+* Please provide each contribution in a separate folder.
