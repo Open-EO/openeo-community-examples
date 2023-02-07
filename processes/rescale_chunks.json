@@ -1,97 +1,97 @@
 {
-  "description": "A simple process for rescaling Sentinel 2 RGB images within polygon chunks that also showcases how to use ``chunk_polygon() with a (User Defined Function) UDF.",
-  "id": "rescale_chunks",
-  "links": [
-    {
-      "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/rescale_chunks",
-      "rel": "canonical",
-      "title": "Public URL for user-defined process 'rescale_chunks'"
-    }
-  ],
-  "parameters": [
-    {
-      "description": "Left-closed temporal interval, i.e. an array with exactly two elements: The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
-      "name": "date",
-      "schema": {
-        "subtype": "temporal-interval",
-        "type": "array"
-      }
-    },
-    {
-      "description": "Spatial extent for area of interest to calculate NBR, specified as GEOJSON.",
-      "name": "aoi",
-      "schema": {
-        "subtype": "geojson",
-        "type": "object"
-      }
-    }
-  ],
-  "process_graph": {
-    "chunkpolygon1": {
-      "arguments": {
-        "chunks": {
-          "from_parameter": "aoi"
+    "description": "A simple process for rescaling Sentinel 2 RGB images within polygon chunks that also showcases how to use ``chunk_polygon() with a (User Defined Function) UDF.",
+    "id": "rescale_chunks",
+    "links": [
+        {
+            "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/rescale_chunks",
+            "rel": "canonical",
+            "title": "Public URL for user-defined process 'rescale_chunks'"
+        }
+    ],
+    "parameters": [
+        {
+            "description": "Left-closed temporal interval, i.e. an array with exactly two elements: The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+            "name": "date",
+            "schema": {
+                "subtype": "temporal-interval",
+                "type": "array"
+            }
         },
-        "data": {
-          "from_node": "loadcollection1"
-        },
-        "process": {
-          "process_graph": {
-            "runudf1": {
-              "arguments": {
-                "data": {
-                  "from_parameter": "data"
+        {
+            "description": "Spatial extent for area of interest to calculate NBR, specified as GEOJSON.",
+            "name": "aoi",
+            "schema": {
+                "subtype": "geojson",
+                "type": "object"
+            }
+        }
+    ],
+    "process_graph": {
+        "chunkpolygon1": {
+            "arguments": {
+                "chunks": {
+                    "from_parameter": "aoi"
                 },
-                "runtime": "python",
-                "udf": "\nfrom openeo.udf import XarrayDataCube\n\ndef apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:\n    array = cube.get_array()\n    array.values = 0.0001* array.values\n    return cube\n"
-              },
-              "process_id": "run_udf",
-              "result": true
-            }
-          }
-        }
-      },
-      "process_id": "chunk_polygon"
-    },
-    "loadcollection1": {
-      "arguments": {
-        "bands": [
-          "B02",
-          "B03",
-          "B04"
-        ],
-        "id": "SENTINEL2_L2A",
-        "spatial_extent": null,
-        "temporal_extent": {
-          "from_parameter": "date"
-        }
-      },
-      "process_id": "load_collection"
-    },
-    "reducedimension1": {
-      "arguments": {
-        "data": {
-          "from_node": "chunkpolygon1"
-        },
-        "dimension": "t",
-        "reducer": {
-          "process_graph": {
-            "mean1": {
-              "arguments": {
                 "data": {
-                  "from_parameter": "data"
+                    "from_node": "loadcollection1"
+                },
+                "process": {
+                    "process_graph": {
+                        "runudf1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                },
+                                "runtime": "python",
+                                "udf": "\nfrom openeo.udf import XarrayDataCube\n\ndef apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:\n    array = cube.get_array()\n    array.values = 0.0001* array.values\n    return cube\n"
+                            },
+                            "process_id": "run_udf",
+                            "result": true
+                        }
+                    }
                 }
-              },
-              "process_id": "mean",
-              "result": true
-            }
-          }
+            },
+            "process_id": "chunk_polygon"
+        },
+        "loadcollection1": {
+            "arguments": {
+                "bands": [
+                    "B02",
+                    "B03",
+                    "B04"
+                ],
+                "id": "SENTINEL2_L2A",
+                "spatial_extent": null,
+                "temporal_extent": {
+                    "from_parameter": "date"
+                }
+            },
+            "process_id": "load_collection"
+        },
+        "reducedimension1": {
+            "arguments": {
+                "data": {
+                    "from_node": "chunkpolygon1"
+                },
+                "dimension": "t",
+                "reducer": {
+                    "process_graph": {
+                        "mean1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                }
+                            },
+                            "process_id": "mean",
+                            "result": true
+                        }
+                    }
+                }
+            },
+            "process_id": "reduce_dimension",
+            "result": true
         }
-      },
-      "process_id": "reduce_dimension",
-      "result": true
-    }
-  },
-  "returns": "`true` if the list contains a no-data value, false` otherwise.",
-  "summary": "Rescaling of RGB within chunk of polygons."
+    },
+    "returns": "`true` if the list contains a no-data value, false` otherwise.",
+    "summary": "Rescaling of RGB within chunk of polygons."
 }
