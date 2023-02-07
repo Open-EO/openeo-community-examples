@@ -64,7 +64,7 @@
         "bands": [
           "VV"
         ],
-        "id": "SENTINEL1_GAMMA0_SENTINELHUB",
+        "id": "SENTINEL1_GAMMA0",
         "properties": {
           "sat:orbit_state": {
             "process_graph": {
@@ -95,7 +95,7 @@
         "bands": [
           "VV"
         ],
-        "id": "SENTINEL1_GAMMA0_SENTINELHUB",
+        "id": "SENTINEL1_GAMMA0",
         "properties": {
           "sat:orbit_state": {
             "process_graph": {

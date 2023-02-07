@@ -93,7 +93,7 @@
           "B08",
           "B12"
         ],
-        "id": "SENTINEL2_L1C_SENTINELHUB",
+        "id": "SENTINEL2_L1C",
         "spatial_extent": null,
         "temporal_extent": {
           "from_parameter": "After_date"
@@ -107,7 +107,7 @@
           "B08",
           "B12"
         ],
-        "id": "SENTINEL2_L1C_SENTINELHUB",
+        "id": "SENTINEL2_L1C",
         "spatial_extent": null,
         "temporal_extent": {
           "from_parameter": "Previous_date"
