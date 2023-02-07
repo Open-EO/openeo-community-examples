@@ -1,6 +1,9 @@
 {
     "description": "A simple process for rescaling Sentinel 2 RGB images within polygon chunks that also showcases how to use ``chunk_polygon() with a (User Defined Function) UDF.",
     "id": "rescale_chunks",
+    "categories": [
+        "arrays"
+    ],
     "links": [
         {
             "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/rescale_chunks",
@@ -92,6 +95,11 @@
             "result": true
         }
     },
-    "returns": "`true` if the list contains a no-data value, false` otherwise.",
+    "returns": {
+        "description": "`true` if the list contains a no-data value, false` otherwise.",
+        "schema": {
+            "type": "boolean"
+        }
+    },
     "summary": "Rescaling of RGB within chunk of polygons."
 }

@@ -1,8 +1,16 @@
 {
     "id": "Anomaly_Detection",
-    "description": "With the OpenEO-based Regional Benchmarking service you can check the crop growth on a field and compare it with a similar fields. It gives you an idea of whether your field is performing better or worse than other fields.",
-    "returns": "Return a Json file that has CropSAR fAPAR curve for each field and the regional average fAPAR curve calculated from comparable fields in the region during a given time period",
     "summary": "Regional Benchmarking using CropSAR",
+    "description": "With the OpenEO-based Regional Benchmarking service you can check the crop growth on a field and compare it with a similar fields. It gives you an idea of whether your field is performing better or worse than other fields.",
+    "returns": {
+      "description": "`true` if the list contains a no-data value, false` otherwise.",
+      "schema": {
+          "type": "boolean"
+      }
+  },
+    "categories": [
+      "arrays"
+  ],
     "parameters": [
         {
             "description": "Left-closed temporal interval, i.e. an array with exactly two elements:\n\n1. The first element is the start of the temporal interval. The specified instance in time is **included** in the interval.\n2. The second element is the end of the temporal interval. The specified instance in time is **excluded** from the interval.\n\nThe specified temporal strings follow [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html). Also supports open intervals by setting one of the boundaries to `null`, but never both.",
@@ -49,7 +57,7 @@
             }
         },
         {
-            "description": "Loaded featurecollection object of the field geometries",
+            "description": "Loaded feature collection object of the field geometries",
             "name": "polygon",
             "schema": {
                 "subtype": "geojson",
