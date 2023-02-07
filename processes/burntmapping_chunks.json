@@ -1,7 +1,7 @@
 {
     "description": "Classical Normalized Burnt Ratio(NBR) difference is performed on a chunk of polygons.",
     "id": "burntmapping_chunks",
-    "summary": "Burnt area mapping using chunk_polygon on UDF.",
+    "Summary": "Burnt area mapping using chunk_polygon on UDF.",
     "links": [
         {
             "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/burntmapping_chunks",
@@ -9,7 +9,7 @@
             "title": "Public URL for user-defined process 'burntmapping_chunks'"
         }
     ],
-    "categories": [
+    "Categories": [
         "arrays"
     ],
     "parameters": [
