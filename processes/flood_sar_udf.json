@@ -1,7 +1,7 @@
 {
-    "description": "Flood extent can be determined using a change detection approach on Sentinel-1 data. In this process, we have tried adopting UN SPIDER's recommended practice for computing flood extents by implementing an openEO UDF.",
     "id": "flood_sar_udf",
     "Summary": "Flood extent visualization applying threshold to SAR images.",
+    "description": "Flood extent can be determined using a change detection approach on Sentinel-1 data. In this process, we have tried adopting UN SPIDER's recommended practice for computing flood extents by implementing an openEO UDF.",
     "Categories": [
         "arrays"
     ],
@@ -12,6 +12,12 @@
             "title": "Public URL for user-defined process 'flood_sar_udf'"
         }
     ],
+    "returns": {
+        "description": "`true` if the list contains a no-data value, false` otherwise.",
+        "schema": {
+            "type": "boolean"
+        }
+    },
     "parameters": [
         {
             "description": "Left-closed temporal interval, i.e. an array with exactly two elements:The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
@@ -195,12 +201,6 @@
                 }
             },
             "process_id": "reduce_dimension"
-        }
-    },
-    "returns": {
-        "description": "`true` if the list contains a no-data value, false` otherwise.",
-        "schema": {
-            "type": "boolean"
         }
     }
 }

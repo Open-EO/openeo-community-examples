@@ -1,7 +1,7 @@
 {
-    "description": "Performed comparative study between pre and post image for Cologne during 2021 flood. A simple technique to subtract pre and post image is done to know the change in water content due to flood in that region.",
     "id": "flood_ndwi",
     "Summary": "Comparing pre and post flood NDWI.",
+    "description": "Performed comparative study between pre and post image for Cologne during 2021 flood. A simple technique to subtract pre and post image is done to know the change in water content due to flood in that region.",
     "links": [
         {
             "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/flood_ndwi",
@@ -38,6 +38,12 @@
             }
         }
     ],
+    "returns": {
+        "description": "`true` if the list contains a no-data value, false` otherwise.",
+        "schema": {
+            "type": "boolean"
+        }
+    },
     "process_graph": {
         "NDWI1": {
             "arguments": {
@@ -118,12 +124,6 @@
             },
             "process_id": "reduce_dimension",
             "result": true
-        }
-    },
-    "returns": {
-        "description": "`true` if the list contains a no-data value, false` otherwise.",
-        "schema": {
-            "type": "boolean"
         }
     }
 }
