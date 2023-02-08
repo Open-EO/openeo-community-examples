@@ -2,9 +2,7 @@
     "id": "flood_sar_udf",
     "Summary": "Flood extent visualization applying threshold to SAR images.",
     "description": "Flood extent can be determined using a change detection approach on Sentinel-1 data. In this process, we have tried adopting UN SPIDER's recommended practice for computing flood extents by implementing an openEO UDF.",
-    "Categories": [
-        "arrays"
-    ],
+    "Categories": ["arrays"],
     "links": [
         {
             "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/flood_sar_udf",
