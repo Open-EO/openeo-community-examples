@@ -39,7 +39,7 @@
         }
     ],
     "returns": {
-        "description": "A GeoTiff representing a qualitative descriptor of burn severity",
+        "description": "A merged datacube with reduced temporal dimension representing a qualitative descriptor of burn severity",
         "schema": {
             "type": "object",
             "subtype": "raster-cube"

@@ -39,7 +39,7 @@
         }
     ],
     "returns": {
-        "description": "A GeoTiff showcasing NDWI difference of pre and post flood data.",
+        "description": "A merged datacube with reduced temporal dimensions.",
         "schema": {
             "type": "object",
             "subtype": "raster-cube"

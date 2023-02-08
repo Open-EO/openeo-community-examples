@@ -69,7 +69,7 @@
         }
     ],
     "returns": {
-        "description": "A file with the CropSAR fAPAR values of the individual fields and the regional average fAPAR value for the specified time period",
+        "description": "A datacube with the CropSAR fAPAR values of the individual fields and the regional average fAPAR value for the specified time period",
         "schema": {
             "type": "object"
         }

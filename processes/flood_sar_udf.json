@@ -13,7 +13,7 @@
         }
     ],
     "returns": {
-        "description": "A GeoTiff with flood extent.",
+        "description": "A merged datacube with reduced temporal dimension",
         "schema": {
             "type": "object",
             "subtype": "raster-cube"

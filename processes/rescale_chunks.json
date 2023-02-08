@@ -13,7 +13,7 @@
         }
     ],
     "returns": {
-        "description": "A GeoTiff with rescaled RGB data",
+        "description": "A datacube rescaled with 0.0001",
         "schema": {
             "type": "object",
             "subtype": "raster-cube"
