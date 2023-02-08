@@ -15,7 +15,7 @@
     "returns": {
         "description": "A GeoTiff with rescaled RGB data",
         "schema": {
-            "type": "data cube"
+            "type": "DataCube"
         }
     },
     "parameters": [

@@ -15,7 +15,7 @@
     "returns": {
         "description": "A GeoTiff with flood extent.",
         "schema": {
-            "type": "data cube"
+            "type": "DataCube"
         }
     },
     "parameters": [
