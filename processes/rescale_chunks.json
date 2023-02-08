@@ -1,7 +1,7 @@
 {
     "id": "rescale_chunks",
     "summary": "Rescaling of RGB within chunk of polygons",
-    "description": "A simple process for rescaling Sentinel 2 RGB images within polygon chunks that also showcases how to use ``chunk_polygon() with a (User Defined Function) UDF.",
+    "description": "A simple process for rescaling Sentinel 2 RGB images within polygon chunks that also showcases how to use ``chunk_polygon()`` with a (User Defined Function) UDF.",
     "categories": [
         "arrays"
     ],
