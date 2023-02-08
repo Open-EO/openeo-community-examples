@@ -39,7 +39,7 @@
         }
     ],
     "returns": {
-        "description": "A GeoTiff representing a qualitative descriptorof burn severity",
+        "description": "A GeoTiff representing a qualitative descriptor of burn severity",
         "schema": {
             "type": "data cube"
         }
