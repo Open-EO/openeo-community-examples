@@ -1,6 +1,6 @@
 {
     "id": "burntmapping_chunks",
-    "summary": "Burnt area mapping using chunk_polygon on UDF.",
+    "summary": "Burnt area mapping using chunk_polygon on UDF",
     "description": "Classical Normalized Burnt Ratio(NBR) difference is performed on a chunk of polygons.",
     "categories": [
         "arrays"
