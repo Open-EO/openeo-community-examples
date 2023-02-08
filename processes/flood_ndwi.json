@@ -41,7 +41,8 @@
     "returns": {
         "description": "A GeoTiff showcasing NDWI difference of pre and post flood data.",
         "schema": {
-            "type": "DataCube"
+            "type": "object",
+            "subtype": "raster-cube"
         }
     },
     "process_graph": {

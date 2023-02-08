@@ -41,7 +41,8 @@
     "returns": {
         "description": "A GeoTiff representing a qualitative descriptor of burn severity",
         "schema": {
-            "type": "DataCube"
+            "type": "object",
+            "subtype": "raster-cube"
         }
     },
     "process_graph": {
