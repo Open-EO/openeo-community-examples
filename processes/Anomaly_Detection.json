@@ -2,7 +2,9 @@
     "id": "Anomaly_Detection",
     "Summary": "Regional Benchmarking using CropSAR",
     "description": "With the OpenEO-based Regional Benchmarking service you can check the crop growth on a field and compare it with a similar fields. It gives you an idea of whether your field is performing better or worse than other fields.",
-    "Categories": ["arrays"],
+    "categories": [
+        "arrays"
+    ],
     "parameters": [
         {
             "description": "Left-closed temporal interval, i.e. an array with exactly two elements:\n\n1. The first element is the start of the temporal interval. The specified instance in time is **included** in the interval.\n2. The second element is the end of the temporal interval. The specified instance in time is **excluded** from the interval.\n\nThe specified temporal strings follow [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html). Also supports open intervals by setting one of the boundaries to `null`, but never both.",
