@@ -41,7 +41,7 @@
     "returns": {
         "description": "`true` if the list contains a no-data value, false` otherwise.",
         "schema": {
-            "type": "boolean"
+            "type": "datacube"
         }
     },
     "process_graph": {
