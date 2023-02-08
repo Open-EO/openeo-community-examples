@@ -69,9 +69,9 @@
         }
     ],
     "returns": {
-        "description": "`true` if the list contains a no-data value, false` otherwise.",
+        "description": "A file with the CropSAR fAPAR values of the individual fields and the regional average fAPAR value for the specified time period",
         "schema": {
-            "type": "datacube"
+            "type": "data cube"
         }
     },
     "process_graph": {

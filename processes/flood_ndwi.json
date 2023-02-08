@@ -39,9 +39,9 @@
         }
     ],
     "returns": {
-        "description": "`true` if the list contains a no-data value, false` otherwise.",
+        "description": "A GeoTiff showcasing NDWI difference of pre and post flood data.",
         "schema": {
-            "type": "datacube"
+            "type": "data cube"
         }
     },
     "process_graph": {

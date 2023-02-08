@@ -13,9 +13,9 @@
         }
     ],
     "returns": {
-        "description": "`true` if the list contains a no-data value, false` otherwise.",
+        "description": "A GeoTiff with flood extent.",
         "schema": {
-            "type": "datacube"
+            "type": "data cube"
         }
     },
     "parameters": [

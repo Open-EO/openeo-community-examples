@@ -39,9 +39,9 @@
         }
     ],
     "returns": {
-        "description": "`true` if the list contains a no-data value, false` otherwise.",
+        "description": "A GeoTiff representing a qualitative descriptorof burn severity",
         "schema": {
-            "type": "datacube"
+            "type": "data cube"
         }
     },
     "process_graph": {
