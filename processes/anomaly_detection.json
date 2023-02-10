@@ -1,4 +1,79 @@
 {
+    "id": "Anomaly_Detection",
+    "summary": "Regional Benchmarking using CropSAR",
+    "description": "With the openEO-based Regional Benchmarking service in anomaly identification, you can check the crop growth on a field and compare it with a similar fields. It gives you an idea of whether your field is performing better or worse than other fields.",
+    "categories": [
+        "arrays"
+    ],
+    "parameters": [
+        {
+            "name": "date",
+            "description": "Left-closed temporal interval, i.e. an array with exactly two elements:\n\n1. The first element is the start of the temporal interval. The specified instance in time is **included** in the interval.\n2. The second element is the end of the temporal interval. The specified instance in time is **excluded** from the interval.\n\nThe specified temporal strings follow [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html). Also supports open intervals by setting one of the boundaries to `null`, but never both.",
+            "schema": {
+                "type": "array",
+                "subtype": "temporal-interval",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "date-time",
+                            "subtype": "date-time"
+                        },
+                        {
+                            "type": "string",
+                            "format": "date",
+                            "subtype": "date"
+                        },
+                        {
+                            "type": "string",
+                            "subtype": "year",
+                            "minLength": 4,
+                            "maxLength": 4,
+                            "pattern": "^\\d{4}$"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "examples": [
+                    [
+                        "2015-01-01T00:00:00Z",
+                        "2016-01-01T00:00:00Z"
+                    ],
+                    [
+                        "2015-01-01",
+                        "2016-01-01"
+                    ]
+                ]
+            }
+        },
+        {
+            "name": "polygon",
+            "description": "Loaded featurecollection object of the field geometries",
+            "schema": {
+                "type": "object",
+                "subtype": "geojson"
+            }
+        },
+        {
+            "name": "biopar_type",
+            "description": "BIOPAR type [FAPAR,FCOVER] used to calculate the CropSAR curve on. As default the FAPAR is used",
+            "schema": {
+                "type": "string"
+            },
+            "default": "FAPAR",
+            "optional": true
+        }
+    ],
+    "returns": {
+        "description": "A datacube with the CropSAR fAPAR values of the individual fields and the regional average fAPAR value for the specified time period",
+        "schema": {
+            "type": "object"
+        }
+    },
     "process_graph": {
         "loadcollection1": {
             "process_id": "load_collection",
@@ -237,70 +312,5 @@
             },
             "result": true
         }
-    },
-    "id": "Anomaly_Detection",
-    "description": "# Anomaly Detection\n\nWith our Regional Benchmarking service in anomaly identification, you can check the crop growth on your field and compare it with similar fields in the region. It gives you an idea of whether your field is performing better or worse than other fields.\n\nThe service calculates the CropSAR fAPAR curve for each field and the regional average fAPAR curve calculated from comparable fields in the region during a given time period. \n",
-    "parameters": [
-        {
-            "name": "date",
-            "description": "Left-closed temporal interval, i.e. an array with exactly two elements:\n\n1. The first element is the start of the temporal interval. The specified instance in time is **included** in the interval.\n2. The second element is the end of the temporal interval. The specified instance in time is **excluded** from the interval.\n\nThe specified temporal strings follow [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html). Also supports open intervals by setting one of the boundaries to `null`, but never both.",
-            "schema": {
-                "type": "array",
-                "subtype": "temporal-interval",
-                "minItems": 2,
-                "maxItems": 2,
-                "items": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "format": "date-time",
-                            "subtype": "date-time"
-                        },
-                        {
-                            "type": "string",
-                            "format": "date",
-                            "subtype": "date"
-                        },
-                        {
-                            "type": "string",
-                            "subtype": "year",
-                            "minLength": 4,
-                            "maxLength": 4,
-                            "pattern": "^\\d{4}$"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "examples": [
-                    [
-                        "2015-01-01T00:00:00Z",
-                        "2016-01-01T00:00:00Z"
-                    ],
-                    [
-                        "2015-01-01",
-                        "2016-01-01"
-                    ]
-                ]
-            }
-        },
-        {
-            "name": "polygon",
-            "description": "Loaded featurecollection object of the field geometries",
-            "schema": {
-                "type": "object",
-                "subtype": "geojson"
-            }
-        },
-        {
-            "name": "biopar_type",
-            "description": "BIOPAR type [FAPAR,FCOVER] used to calculate the CropSAR curve on. As default the FAPAR is used",
-            "schema": {
-                "type": "string"
-            },
-            "default": "FAPAR",
-            "optional": true
-        }
-    ]
+    }
 }
