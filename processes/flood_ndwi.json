@@ -1,0 +1,130 @@
+{
+    "id": "flood_ndwi",
+    "summary": "Comparing pre and post flood NDWI",
+    "description": "Performed comparative study between pre and post image for Cologne during 2021 flood. A simple technique to subtract pre and post image is done to know the change in water content due to flood in that region.",
+    "links": [
+        {
+            "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/flood_ndwi",
+            "rel": "canonical",
+            "title": "Public URL for user-defined process 'flood_ndwi'"
+        }
+    ],
+    "categories": [
+        "vegetation indices"
+    ],
+    "parameters": [
+        {
+            "description": "Left-closed temporal interval, i.e. an array with exactly two elements: The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+            "name": "Previous_date",
+            "schema": {
+                "subtype": "temporal-interval",
+                "type": "array"
+            }
+        },
+        {
+            "description": "Left-closed temporal interval, i.e. an array with exactly two elements: The first element is the start of the temporal interval. The specified instance in time is included in the interval. The second element is the end of the temporal interval. The specified instance in time is excluded from the interval. The specified temporal strings follow RFC 3339. Also supports open intervals by setting one of the boundaries to null, but never both.",
+            "name": "After_date",
+            "schema": {
+                "subtype": "temporal-interval",
+                "type": "array"
+            }
+        },
+        {
+            "description": "Spatial extent for area of interest to calculate NBR, specified as GEOJSON.",
+            "name": "aoi",
+            "schema": {
+                "subtype": "geojson",
+                "type": "object"
+            }
+        }
+    ],
+    "returns": {
+        "description": "A merged datacube with reduced temporal dimensions.",
+        "schema": {
+            "type": "object",
+            "subtype": "raster-cube"
+        }
+    },
+    "process_graph": {
+        "NDWI1": {
+            "arguments": {
+                "date": {
+                    "from_parameter": "After_date"
+                },
+                "polygon": {
+                    "from_parameter": "aoi"
+                }
+            },
+            "namespace": "vito",
+            "process_id": "NDWI"
+        },
+        "NDWI2": {
+            "arguments": {
+                "date": {
+                    "from_parameter": "Previous_date"
+                },
+                "polygon": {
+                    "from_parameter": "aoi"
+                }
+            },
+            "namespace": "vito",
+            "process_id": "NDWI"
+        },
+        "apply1": {
+            "arguments": {
+                "data": {
+                    "from_node": "NDWI2"
+                },
+                "process": {
+                    "process_graph": {
+                        "multiply1": {
+                            "arguments": {
+                                "x": {
+                                    "from_parameter": "x"
+                                },
+                                "y": -1
+                            },
+                            "process_id": "multiply",
+                            "result": true
+                        }
+                    }
+                }
+            },
+            "process_id": "apply"
+        },
+        "mergecubes1": {
+            "arguments": {
+                "cube1": {
+                    "from_node": "NDWI1"
+                },
+                "cube2": {
+                    "from_node": "apply1"
+                }
+            },
+            "process_id": "merge_cubes"
+        },
+        "reducedimension1": {
+            "arguments": {
+                "data": {
+                    "from_node": "mergecubes1"
+                },
+                "dimension": "t",
+                "reducer": {
+                    "process_graph": {
+                        "sum1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                }
+                            },
+                            "process_id": "sum",
+                            "result": true
+                        }
+                    }
+                }
+            },
+            "process_id": "reduce_dimension",
+            "result": true
+        }
+    }
+}

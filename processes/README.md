@@ -6,9 +6,14 @@ This folder contains user-defined processes that can be run by any openEO client
 
 | ID | Categories | Summary |
 | -- | ---------- | ------- |
-| [array_contains_nodata](array_contains_nodata.json) | arrays               | Check for no-data values in an array |
-| [array_find_nodata](array_find_nodata.json)         | arrays               | Find no-data values in an array |
+| [anomaly_detection](anomaly_detection.json)         | cubes | Regional Benchmarking using CropSAR |
+| [array_contains_nodata](array_contains_nodata.json) | arrays | Check for no-data values in an array |
+| [array_find_nodata](array_find_nodata.json)         | arrays | Find no-data values in an array |
+| [burntmapping_chunks](burntmapping_chunks.json)     | math > indices | Burnt area mapping |
 | [crop_polygon](crop_polygon.json)                   | cubes, filter, masks | Crop (filter and mask) using a polygon |
+| [flood_ndwi](flood_ndwi.json)                       | vegetation indices | Comparing pre and post flood NDWI |
+| [flood_sar_udf](flood_sar_udf.json)                 | udf | Flood extent visualization applying threshold to SAR images |
+| [rescale_chunks](rescale_chunks.json)               | cubes | Rescaling of RGB within chunk of polygons |
 
 ## Contributing
 
