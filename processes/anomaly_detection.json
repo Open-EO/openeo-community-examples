@@ -1,0 +1,316 @@
+{
+    "id": "anomaly_detection",
+    "summary": "Regional Benchmarking using CropSAR",
+    "description": "With the openEO-based Regional Benchmarking service in anomaly identification, you can check the crop growth on a field and compare it with a similar fields. It gives you an idea of whether your field is performing better or worse than other fields.",
+    "categories": [
+        "cubes"
+    ],
+    "parameters": [
+        {
+            "name": "date",
+            "description": "Left-closed temporal interval, i.e. an array with exactly two elements:\n\n1. The first element is the start of the temporal interval. The specified instance in time is **included** in the interval.\n2. The second element is the end of the temporal interval. The specified instance in time is **excluded** from the interval.\n\nThe specified temporal strings follow [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html). Also supports open intervals by setting one of the boundaries to `null`, but never both.",
+            "schema": {
+                "type": "array",
+                "subtype": "temporal-interval",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "date-time",
+                            "subtype": "date-time"
+                        },
+                        {
+                            "type": "string",
+                            "format": "date",
+                            "subtype": "date"
+                        },
+                        {
+                            "type": "string",
+                            "subtype": "year",
+                            "minLength": 4,
+                            "maxLength": 4,
+                            "pattern": "^\\d{4}$"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "examples": [
+                    [
+                        "2015-01-01T00:00:00Z",
+                        "2016-01-01T00:00:00Z"
+                    ],
+                    [
+                        "2015-01-01",
+                        "2016-01-01"
+                    ]
+                ]
+            }
+        },
+        {
+            "name": "polygon",
+            "description": "Loaded Feature collection object of the field geometries",
+            "schema": {
+                "type": "object",
+                "subtype": "geojson"
+            }
+        },
+        {
+            "name": "biopar_type",
+            "description": "BIOPAR type [FAPAR,FCOVER] used to calculate the CropSAR curve on. As default the FAPAR is used",
+            "schema": {
+                "type": "string"
+            },
+            "default": "FAPAR",
+            "optional": true
+        }
+    ],
+    "returns": {
+        "description": "A datacube with the CropSAR fAPAR values of the individual fields and the regional average fAPAR value for the specified time period",
+        "schema": {
+            "type": "object"
+        }
+    },
+    "process_graph": {
+        "loadcollection1": {
+            "process_id": "load_collection",
+            "arguments": {
+                "bands": [
+                    "VH",
+                    "VV"
+                ],
+                "id": "SENTINEL1_GAMMA0_SENTINELHUB",
+                "properties": {
+                    "polarization": {
+                        "process_graph": {
+                            "eq1": {
+                                "process_id": "eq",
+                                "arguments": {
+                                    "x": {
+                                        "from_parameter": "value"
+                                    },
+                                    "y": "DV"
+                                },
+                                "result": true
+                            }
+                        }
+                    }
+                },
+                "spatial_extent": null,
+                "temporal_extent": null
+            }
+        },
+        "sarbackscatter1": {
+            "process_id": "sar_backscatter",
+            "arguments": {
+                "coefficient": "gamma0-terrain",
+                "contributing_area": false,
+                "data": {
+                    "from_node": "loadcollection1"
+                },
+                "elevation_model": null,
+                "ellipsoid_incidence_angle": false,
+                "local_incidence_angle": false,
+                "mask": false,
+                "noise_removal": true
+            }
+        },
+        "loadcollection2": {
+            "process_id": "load_collection",
+            "arguments": {
+                "bands": [
+                    "B03",
+                    "B04",
+                    "B08",
+                    "sunAzimuthAngles",
+                    "sunZenithAngles",
+                    "viewAzimuthMean",
+                    "viewZenithMean",
+                    "SCL"
+                ],
+                "id": "SENTINEL2_L2A_SENTINELHUB",
+                "spatial_extent": null,
+                "temporal_extent": null
+            }
+        },
+        "maskscldilation1": {
+            "process_id": "mask_scl_dilation",
+            "arguments": {
+                "data": {
+                    "from_node": "loadcollection2"
+                },
+                "scl_band_name": "SCL"
+            }
+        },
+        "resamplecubespatial1": {
+            "process_id": "resample_cube_spatial",
+            "arguments": {
+                "data": {
+                    "from_node": "maskscldilation1"
+                },
+                "method": "near",
+                "target": {
+                    "from_node": "sarbackscatter1"
+                }
+            }
+        },
+        "reducedimension1": {
+            "process_id": "reduce_dimension",
+            "arguments": {
+                "data": {
+                    "from_node": "resamplecubespatial1"
+                },
+                "dimension": "bands",
+                "reducer": {
+                    "process_graph": {
+                        "runudf1": {
+                            "process_id": "run_udf",
+                            "arguments": {
+                                "context": {
+                                    "biopar": {
+                                        "from_parameter": "biopar_type"
+                                    }
+                                },
+                                "data": {
+                                    "from_parameter": "data"
+                                },
+                                "runtime": "Python",
+                                "udf": "import numpy as np\nfrom typing import Dict\nfrom openeo.udf.xarraydatacube import XarrayDataCube\nimport tensorflow as tf\nfrom biopar.bioparnnw import BioParNNW\n\n\nbiopar_version = '3band'\n\ndef apply_datacube(cube: XarrayDataCube, context: Dict) -> XarrayDataCube:\n    valid_biopars= ['FAPAR','LAI','FCOVER','CWC','CCC']\n    biopar = context.get(\"biopar\", \"FAPAR\")\n    if biopar not in valid_biopars:\n        biopar = 'FAPAR'\n\n    ds = cube.get_array()\n    ds_date = ds\n\n    from numpy import cos, radians\n    ### LOAD THE DIFFERENT REQUIRED BANDS FOR THE 8-BAND FAPAR\n    scaling_bands = 0.0001\n\n    saa = ds_date.sel(bands='sunAzimuthAngles')\n    sza = ds_date.sel(bands=\"sunZenithAngles\")\n    vaa = ds_date.sel(bands=\"viewAzimuthMean\")\n    vza = ds_date.sel(bands=\"viewZenithMean\")\n\n    B03 = ds_date.sel(bands='B03') * scaling_bands\n    B04 = ds_date.sel(bands='B04') * scaling_bands\n    B8 = ds_date.sel(bands='B08') * scaling_bands\n\n    g1 = cos(radians(vza))\n    g2 = cos(radians(sza))\n    g3 = cos(radians(saa - vaa))\n\n    #### FLATTEN THE ARRAY ####\n    flat = list(map(lambda arr: arr.flatten(),\n                    [B03.values, B04.values,B8.values, g1.values, g2.values, g3.values]))\n    bands = np.array(flat)\n\n    #### CALCULATE THE BIOPAR BASED ON THE BANDS #####\n    image = BioParNNW(version='3band', parameter=biopar, singleConfig = True).run(bands, output_scale=1,\n                                                                  output_dtype=tf.dtypes.float32,\n                                                                  minmax_flagging=False)  # netcdf algorithm\n    as_image = image.reshape((g1.shape))\n    ## set nodata to nan\n    as_image[np.where(np.isnan(B03))] = np.nan\n    xr_biopar = vza.copy()\n    xr_biopar.values = as_image\n\n    return XarrayDataCube(xr_biopar)  # xarray.DataArray(as_image,vza.dims,vza.coords)\n\n\n"
+                            },
+                            "result": true
+                        }
+                    }
+                }
+            }
+        },
+        "adddimension1": {
+            "process_id": "add_dimension",
+            "arguments": {
+                "data": {
+                    "from_node": "reducedimension1"
+                },
+                "label": "band_0",
+                "name": "bands",
+                "type": "bands"
+            }
+        },
+        "mergecubes1": {
+            "process_id": "merge_cubes",
+            "arguments": {
+                "cube1": {
+                    "from_node": "sarbackscatter1"
+                },
+                "cube2": {
+                    "from_node": "adddimension1"
+                }
+            }
+        },
+        "arrayelement1": {
+            "process_id": "array_element",
+            "arguments": {
+                "data": {
+                    "from_parameter": "date"
+                },
+                "index": 0
+            }
+        },
+        "dateshift1": {
+            "process_id": "date_shift",
+            "arguments": {
+                "date": {
+                    "from_node": "arrayelement1"
+                },
+                "unit": "day",
+                "value": -90
+            }
+        },
+        "arrayelement2": {
+            "process_id": "array_element",
+            "arguments": {
+                "data": {
+                    "from_parameter": "date"
+                },
+                "index": 1
+            }
+        },
+        "dateshift2": {
+            "process_id": "date_shift",
+            "arguments": {
+                "date": {
+                    "from_node": "arrayelement2"
+                },
+                "unit": "day",
+                "value": 90
+            }
+        },
+        "filtertemporal1": {
+            "process_id": "filter_temporal",
+            "arguments": {
+                "data": {
+                    "from_node": "mergecubes1"
+                },
+                "extent": [
+                    {
+                        "from_node": "dateshift1"
+                    },
+                    {
+                        "from_node": "dateshift2"
+                    }
+                ]
+            }
+        },
+        "vectorbuffer1": {
+            "process_id": "vector_buffer",
+            "arguments": {
+                "distance": -10,
+                "geometry": {
+                    "from_parameter": "polygon"
+                },
+                "unit": "meter"
+            }
+        },
+        "aggregatespatial1": {
+            "process_id": "aggregate_spatial",
+            "arguments": {
+                "data": {
+                    "from_node": "filtertemporal1"
+                },
+                "geometries": {
+                    "from_node": "vectorbuffer1"
+                },
+                "reducer": {
+                    "process_graph": {
+                        "mean1": {
+                            "process_id": "mean",
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                }
+                            },
+                            "result": true
+                        }
+                    }
+                }
+            }
+        },
+        "runudf2": {
+            "process_id": "run_udf",
+            "arguments": {
+                "context": {
+                    "date": {
+                        "from_parameter": "date"
+                    }
+                },
+                "data": {
+                    "from_node": "aggregatespatial1"
+                },
+                "runtime": "Python",
+                "udf": "import logging\nfrom openeo.udf.udf_data import UdfData\nfrom openeo.udf.structured_data import StructuredData\nfrom openeo.rest.conversions import timeseries_json_to_pandas\nimport pandas as pd\n#import sys\n#sys.path.append(r'/data/users/Public/bontek/Nextland/Anomaly_detection/cropsar-1.4.7-py3-none-any.whl') #TODO TO remove\nfrom cropsar.preprocessing.retrieve_timeseries_openeo import run_cropsar_dataframes\n\nlogger = logging.getLogger(\"nextland_services.cropsar\")\n\n#calculate the cropsar curve for each field and the regional average of all the input fields\n######## FUNCTIONS ################\ndef get_cropsar_TS(ts_df, unique_ids_fields, metrics_order, time_range, Spark=True):\n    index_fAPAR = metrics_order.index('FAPAR')\n    column_indices = ts_df.columns.get_level_values(1)\n    indices = column_indices.isin([index_fAPAR])\n\n    df_S2 = ts_df.loc[:, indices].sort_index().T\n    if(df_S2.empty):\n        raise ValueError(\"Received an empty Sentinel-2 input dataframe while trying to compute cropSAR!\")\n\n    df_VHVV = ts_df.loc[:, column_indices.isin([0, 1])].sort_index().T\n\n    cropsar_df, cropsar_df_q10, cropsar_df_q90 = run_cropsar_dataframes(\n        df_S2, df_VHVV, None, scale=1, offset=0, date_range=time_range,\n    )\n\n    if (len(cropsar_df.index) == 0):\n        logger.warning(\"CropSAR returned an empty dataframe. For input, Sentinel-2 input: \")\n        logger.warning(str(df_S2.to_json(indent=2)))\n        logger.warning(\"Sentinel-1 VH-VV: \")\n        logger.warning(str(df_VHVV.to_json(indent=2)))\n\n    cropsar_df = cropsar_df.rename(\n        columns=dict(zip(list(cropsar_df.columns.values), [str(item) + '_cropSAR' for item in unique_ids_fields])))\n    cropsar_df = cropsar_df.round(decimals=3)\n    cropsar_df.index = pd.to_datetime(cropsar_df.index).date\n    cropsar_df = cropsar_df.loc[pd.to_datetime(time_range[0], format = '%Y-%m-%d').date() :pd.to_datetime(time_range[1], format = '%Y-%m-%d').date()]\n    return cropsar_df\n\n\ndef udf_anomaly_detection(udf_data:UdfData):\n    ## constants\n    user_context = udf_data.user_context\n    time_range = user_context.get('date')\n    columns_order = ['VH', 'VV', 'FAPAR']\n\n    ## load the TS\n    ts_dict = udf_data.get_structured_data_list()[0].data\n    if not ts_dict:  # workaround of ts_dict is empty\n        return\n    TS_df = timeseries_json_to_pandas(ts_dict)\n    TS_df.index = pd.to_datetime(TS_df.index).date\n\n    if not isinstance(TS_df.columns, pd.MultiIndex):\n        TS_df.columns = pd.MultiIndex.from_product([[0], TS_df.columns])\n\n    amount_fields = next(iter(ts_dict.values()))\n    unique_ids_fields = ['Field_{}'.format(str(p)) for p in range(len(amount_fields))]\n\n    logger.info(\"CropSAR input dataframe:\\n\" + str(TS_df.describe()))\n    logger.info(\"Input time range: \" + str(time_range))\n    # logger.warning(str(TS_df.to_json(indent=2,date_format='iso',double_precision=5)))\n\n    ts_df_cropsar = get_cropsar_TS(TS_df, unique_ids_fields, columns_order, time_range)\n\n    # calculate the regional greenness curve\n    ts_df_cropsar['Regional_average'] = ts_df_cropsar.mean(axis=1)\n    ts_df_cropsar = ts_df_cropsar.round(decimals=3)\n    ts_df_cropsar.index = ts_df_cropsar.index.astype(str)\n\n    udf_data.set_structured_data_list([StructuredData(description= 'anomaly_detection', data = ts_df_cropsar.to_dict(), type = \"dict\")])\n\n\n    return udf_data"
+            },
+            "result": true
+        }
+    }
+}
