@@ -8,11 +8,11 @@ This folder contains user-defined processes that can be run by any openEO client
 | -- | ---------- | ------- |
 | [array_contains_nodata](array_contains_nodata.json) | arrays | Check for no-data values in an array |
 | [array_find_nodata](array_find_nodata.json)         | arrays | Find no-data values in an array |
-| [anomaly_detection](anomaly_detection.json)         | datacube | Regional Benchmarking using CropSAR |
-| [burntmapping_chunks](burntmapping_chunks.json)         | datacube | Burnt area mapping |
-| [flood_ndwi](flood_ndwi.json)         | datacube | Comparing pre and post flood NDWI |
-| [flood_sar_udf](flood_sar_udf.json)         | datacube | Flood extent visualization applying threshold to SAR images |
-| [rescale_chunks](rescale_chunks.json)         | datacube | Rescaling of RGB within chunk of polygons |
+| [anomaly_detection](anomaly_detection.json)         | DataArray | Regional Benchmarking using CropSAR |
+| [burntmapping_chunks](burntmapping_chunks.json)         | DataArray | Burnt area mapping |
+| [flood_ndwi](flood_ndwi.json)         | DataArray | Comparing pre and post flood NDWI |
+| [flood_sar_udf](flood_sar_udf.json)         | DataArray | Flood extent visualization applying threshold to SAR images |
+| [rescale_chunks](rescale_chunks.json)         | DataArray | Rescaling of RGB within chunk of polygons |
 
 ## Contributing
 

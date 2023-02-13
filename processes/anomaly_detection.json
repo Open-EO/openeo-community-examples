@@ -3,7 +3,7 @@
     "summary": "Regional Benchmarking using CropSAR",
     "description": "With the openEO-based Regional Benchmarking service in anomaly identification, you can check the crop growth on a field and compare it with a similar fields. It gives you an idea of whether your field is performing better or worse than other fields.",
     "categories": [
-        "datacube"
+        "DataArray"
     ],
     "parameters": [
         {
