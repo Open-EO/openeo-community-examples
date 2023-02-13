@@ -3,7 +3,7 @@
     "summary": "Burnt area mapping",
     "description": "Classical Normalized Burnt Ratio (NBR) difference is performed on a chunk of polygons using a UDF in ``chunk_polygon()``.",
     "categories": [
-        "DataArray"
+        " math > indices"
     ],
     "links": [
         {
