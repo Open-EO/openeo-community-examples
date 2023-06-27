@@ -1,0 +1,97 @@
+{
+    "id": "crop_polygon",
+    "summary": "Crop using a polygon",
+    "description": "Crops a data cube to the given polygons by filtering and masking. This process executes the two processes ``filter_spatial()`` and ``mask_polygon()`` consecutively.",
+    "categories": [
+        "cubes",
+        "filter",
+        "masks"
+    ],
+    "parameters": [
+        {
+            "name": "data",
+            "description": "A raster data cube.",
+            "schema": {
+                "type": "object",
+                "subtype": "raster-cube"
+            }
+        },
+        {
+            "name": "mask",
+            "description": "A GeoJSON object containing at least one polygon. The provided feature types can be one of the following:\n\n* A `Polygon` or `MultiPolygon` geometry,\n* a `Feature` with a `Polygon` or `MultiPolygon` geometry or,\n* a `FeatureCollection` containing at least one `Feature` with `Polygon` or `MultiPolygon` geometries.",
+            "schema": [
+                {
+                    "type": "object",
+                    "subtype": "geojson"
+                },
+                {
+                    "type": "object",
+                    "subtype": "vector-cube"
+                }
+            ]
+        },
+        {
+            "name": "replacement",
+            "description": "The value used to replace masked values with.",
+            "schema": [
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "optional": true
+        }
+    ],
+    "returns": {
+        "description": "A masked data cube restricted to the specified geometries. The dimensions and dimension properties (name, type, labels, reference system and resolution) remain unchanged, except that the spatial dimensions have less (or the same) dimension labels.",
+        "schema": {
+            "type": "object",
+            "subtype": "raster-cube"
+        }
+    },
+    "links": [
+        {
+            "href": "http://www.opengeospatial.org/standards/sfa",
+            "rel": "about",
+            "title": "Simple Features standard by the OGC"
+        }
+    ],
+    "process_graph": {
+        "filter": {
+            "process_id": "filter_spatial",
+            "arguments": {
+                "data": {
+                    "from_parameter": "data"
+                },
+                "geometries": {
+                    "from_parameter": "mask"
+                }
+            }
+        },
+        "mask": {
+            "process_id": "mask_polygon",
+            "arguments": {
+                "data": {
+                    "from_node": "filter"
+                },
+                "replacement": {
+                    "from_parameter": "replacement"
+                },
+                "mask": {
+                    "from_parameter": "mask"
+                },
+                "inside": false
+            },
+            "result": true
+        }
+    }
+}
