@@ -1,0 +1,177 @@
+{
+    "description": "Calculate S1 SAR stats (min, max, mean, sd, q10, q50, q90)",
+    "id": "s1_stats",
+    "links": [
+        {
+            "href": "https://openeo.vito.be/openeo/1.1/processes/u:ecce9fea04b8c9c76ac76b45b6ba00c20f211bda4856c14aa4475b8e8ed433cd%40egi.eu/s1_stats",
+            "rel": "canonical",
+            "title": "Public URL for user-defined process 's1_stats'"
+        }
+    ],
+    "parameters": [
+        {
+            "default": [
+                "2023-05-01",
+                "2023-07-30"
+            ],
+            "description": "The time window to calculate the stats for.",
+            "name": "temporal_extent",
+            "optional": true,
+            "schema": {
+                "subtype": "temporal-interval",
+                "type": "array"
+            }
+        },
+        {
+            "default": {
+                "east": 8.92,
+                "north": 44.45,
+                "south": 44.4,
+                "west": 8.82
+            },
+            "description": "The spatial extent to calculate the stats for.",
+            "name": "spatial_extent",
+            "optional": true,
+            "schema": {
+                "subtype": "bounding-box",
+                "type": "object"
+            }
+        }
+    ],
+    "process_graph": {
+        "applydimension1": {
+            "arguments": {
+                "data": {
+                    "from_node": "loadcollection1"
+                },
+                "dimension": "t",
+                "process": {
+                    "process_graph": {
+                        "arrayconcat1": {
+                            "arguments": {
+                                "array1": {
+                                    "from_node": "arraycreate1"
+                                },
+                                "array2": {
+                                    "from_node": "quantiles1"
+                                }
+                            },
+                            "process_id": "array_concat",
+                            "result": true
+                        },
+                        "arraycreate1": {
+                            "arguments": {
+                                "data": [
+                                    {
+                                        "from_node": "min1"
+                                    },
+                                    {
+                                        "from_node": "max1"
+                                    },
+                                    {
+                                        "from_node": "mean1"
+                                    },
+                                    {
+                                        "from_node": "sd1"
+                                    }
+                                ]
+                            },
+                            "process_id": "array_create"
+                        },
+                        "max1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                }
+                            },
+                            "process_id": "max"
+                        },
+                        "mean1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                }
+                            },
+                            "process_id": "mean"
+                        },
+                        "min1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                }
+                            },
+                            "process_id": "min"
+                        },
+                        "quantiles1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                },
+                                "probabilities": [
+                                    0.1,
+                                    0.5,
+                                    0.9
+                                ]
+                            },
+                            "process_id": "quantiles"
+                        },
+                        "sd1": {
+                            "arguments": {
+                                "data": {
+                                    "from_parameter": "data"
+                                }
+                            },
+                            "process_id": "sd"
+                        }
+                    }
+                },
+                "target_dimension": "bands"
+            },
+            "process_id": "apply_dimension"
+        },
+        "loadcollection1": {
+            "arguments": {
+                "bands": [
+                    "VH",
+                    "VV"
+                ],
+                "id": "S1_GRD_SIGMA0_ASCENDING",
+                "spatial_extent": {
+                    "from_parameter": "spatial_extent"
+                },
+                "temporal_extent": {
+                    "from_parameter": "temporal_extent"
+                }
+            },
+            "process_id": "load_collection"
+        },
+        "renamelabels1": {
+            "arguments": {
+                "data": {
+                    "from_node": "applydimension1"
+                },
+                "dimension": "bands",
+                "target": [
+                    "VH_min",
+                    "VH_max",
+                    "VH_mean",
+                    "VH_sd",
+                    "VH_q10",
+                    "VH_q50",
+                    "VH_q90",
+                    "VV_min",
+                    "VV_max",
+                    "VV_mean",
+                    "VV_sd",
+                    "VV_q10",
+                    "VV_q50",
+                    "VV_q90"
+                ]
+            },
+            "process_id": "rename_labels",
+            "result": true
+        }
+    },
+    "public": true,
+    "summary": "S1 SAR stats"
+}
