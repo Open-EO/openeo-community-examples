@@ -4,15 +4,15 @@ from typing import Dict
 import xarray as xr
 from openeo.udf.debug import inspect
 
+sys.path.insert(0, "onnx_deps")
+import onnxruntime as ort
+
 
 def apply_datacube(cube: XarrayDataCube, context: Dict) -> XarrayDataCube:
-    sys.path.insert(0, "tmp/extra_venv")
-    import onnxruntime as ort
-
     input_data = cube.get_array().isel(t=0).values  # Only perform inference for the first date.
     input_data = input_data[None, ...]  # Neural network expects shape (1, 1, 256, 256)
     inspect(input_data, "input data")
-    ort_session = ort.InferenceSession("tmp/extra_files/test_model.onnx")
+    ort_session = ort.InferenceSession("onnx_models/test_model.onnx")
     ort_inputs = {ort_session.get_inputs()[0].name: input_data}
     ort_outputs = ort_session.run(None, ort_inputs)
     output_data = xr.DataArray(ort_outputs[0])
