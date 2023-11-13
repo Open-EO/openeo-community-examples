@@ -7,6 +7,6 @@ The https://artifactory.vgt.vito.be:443/auxdata-public/openeo/onnx_dependencies.
 python3.8 -m venv venv
 source venv/bin/activate
 pip install onnxruntime
-cd venv/lib/python3.8/site-packages/onnxruntime/
+cd venv/lib/python3.8/site-packages/
 zip -r onnx_dependencies.zip *  # But exclude the standard libraries that were present before installing onnx.
 ```
