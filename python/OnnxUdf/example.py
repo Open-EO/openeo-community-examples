@@ -8,7 +8,7 @@ model_url = "https://artifactory.vgt.vito.be:443/auxdata-public/openeo/test_onnx
 spatial_extent = dict(zip(["west", "south", "east", "north"], [8.908, 53.791, 8.96, 54.016]))
 temporal_extent = ["2022-10-01", "2022-12-01"]
 
-connection = openeo.connect("openeo.cloud").authenticate_oidc()
+connection = openeo.connect("openeo.vito.be").authenticate_oidc()
 
 s2_cube = connection.load_collection(
     "TERRASCOPE_S2_TOC_V2",
