@@ -7,7 +7,7 @@ from scipy.ndimage import distance_transform_cdt
 from skimage.morphology import footprints
 from skimage.morphology import binary_erosion, binary_dilation
 from openeo.udf import XarrayDataCube
-from xarray.ufuncs import isnan as ufuncs_isnan
+
 
 
 
@@ -19,6 +19,14 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     clouds = np.logical_or(np.logical_and(cube_array < 11, cube_array >= 8), cube_array == 3).isel(bands=0)
 
     weights = [1, 0.8, 0.5]
+
+    # Calculate the Day Of Year score
+    times = cube_array.t.dt.day.values  # returns day of the month for each date
+    sigma = 5
+    mu = 15
+    score_doy = 1 / (sigma * math.sqrt(2 * math.pi)) * np.exp(-0.5 * ((times - mu) / sigma) ** 2)
+    score_doy = np.broadcast_to(score_doy[:, np.newaxis, np.newaxis],
+                                [cube_array.sizes['t'], cube_array.sizes['y'], cube_array.sizes['x']])
 
     # Calculate the Distance To Cloud score
     # Erode
@@ -62,8 +70,8 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
                                 [cube_array.sizes['t'], cube_array.sizes['y'], cube_array.sizes['x']])
 
     # Final score is weighted average
-    score = (weights[0] * score_clouds + weights[2] * score_cov) / sum(weights)
-    score = np.where(cube_array.values[:,0,:,:]==0, 0, score)
+    score = score_clouds  # (weights[0] * score_clouds + weights[1] * score_doy + weights[2] * score_cov) / sum(weights)
+    # score = np.where(cube_array.values[:,0,:,:]==0, 0, score)
 
     score_da = xr.DataArray(
         score,
