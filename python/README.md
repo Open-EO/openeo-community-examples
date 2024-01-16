@@ -1,26 +1,25 @@
-# Python Client - Examples and Code Snippets
+# Parcel delineation
+This is an [openEO](https://openeo.org/) example for delineating agricultural parcels based on a neural network, using Sentinel-2 input data.
 
-This folder contains examples and code snippets for the openEO Python client.
+The example focuses on the inference step, using a trained model. It demonstrates data loading and preprocessing, 
+inference, and finally producing vector data as a result.
 
-## Overview
+The example serves as a technology demonstration for openEO, and is not intended for use in another context. 
+Please contact the authors in case you're interested in a field detector!
 
-Environments: `Python` (plain Python code), `Jupyter` (e.g. Notebooks)
+## Authors
 
+- Kristof Van Tricht
+- Jeroen Dries
+- Victor Verhaert
 
-| Title                                       | Environment | Description                                                                                                                                                                                                                                                                                                                           |
-|---------------------------------------------| ----------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Anomaly_Detection](./RescaleChunks/)       | `Jupyter`  | Check the crop growth on your field and compare it with similar fields in the region. |
-| [BasicSentinelMerge](./BasicSentinelMerge/) | `Jupyter`   | Merging Sentinel 1 and 2 in a single datacube for further processing. |
-| [BurntMapping](./BurntMapping/)             | `Jupyter`    | Classical Normalized Burnt Ratio(NBR) difference performed using VITO backend on a chunk polygon. The method followed in this notebook to compute DNBR is inspired from [UN SPIDER's recommended practices](https://www.un-spider.org/advisory-support/recommended-practices/recommended-practice-google-earth-engine-flood-mapping). |
-| [FloodNDWI](./FloodNDWI/)                   | `Jupyter`    | Comparative study between pre and post image for Cologne during 2021 flood using NDWI. [Refernce](https://labo.obs-mip.fr/multitemp/the-ndwi-applied-to-the-recent-flooding-in-the-central-us/) |
-| [FloodSAR](./FloodSAR/)                     | `Jupyter`    | Flood extent detection following [UN SPIDER's recommended practices](https://www.un-spider.org/advisory-support/recommended-practices/recommended-practice-google-earth-engine-flood-mapping). |
-| [Publishing a UDP (S1 statistics)](./Sentinel1_Stats/) | `Jupyter`   | Computes various statistics for Sentinel-1 data and publishes it as a user-defined process (UDP) that can be re-used by others across multiple languages/environments. |
-| [RankComposites](./RankComposites/)         | `Jupyter`   | Max NDVI compositing in openEO. |
-| [RescaleChunks](./RescaleChunks/)           | `Jupyter`   | The creation of a simple process to rescale Sentinel 2 RGB image along with the use of chunk_polygon apply with a (User Defined Function) UDF. |
-| [WorldCereal](./WorldCereal/)               | `Jupyter`   | WorldCereal data extraction sample. |
+Tuning by:
+- Kasper Bonte
+- Bart Driessen
 
+[VITO Remote Sensing](https://remotesensing.vito.be)
 
+## Running the example
 
-## Contributing
+You will require an openEO account to run the example. The [openEO platform](https://openeo.cloud/) offers various options for this.
 
-* Please provide each contribution in a separate folder.
