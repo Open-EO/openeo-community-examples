@@ -23,6 +23,13 @@
             }
         }
     ],
+    "returns": {
+        "description": "A raster showing crop vegetation over time.",
+        "schema": {
+            "type": "object",
+            "subtype": "raster-cube"
+        }
+    },
     "process_graph": {
         "loadcollection1": {
             "arguments": {
