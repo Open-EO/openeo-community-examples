@@ -14,7 +14,6 @@ This folder contains user-defined processes that can be run by any openEO client
 | [flood_ndwi](flood_ndwi.json)                       | vegetation indices | Comparing pre and post flood NDWI |
 | [flood_sar_udf](flood_sar_udf.json)                 | udf | Flood extent visualization applying threshold to SAR images |
 | [rescale_chunks](rescale_chunks.json)               | cubes | Rescaling of RGB within chunk of polygons |
-| [rvi](rvi.json)               | math > indices | Calculate radar vegetation index using Sentinel-1 |
 
 ## Contributing
 
