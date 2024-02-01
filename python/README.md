@@ -24,7 +24,7 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 | [RVI](./RVI/)               | `Jupyter`   | Calculate Radar Vegetation Index | openEO processes `sar_backscatter`, `spectral_nidices.compute_indices`; **plotting** mean result and timeseries; **Awesome Spectral Indices** |
 | [OilSpill](./OilSpill/)               | `Jupyter`   | Oil Spill mapping with Sentinel-1 layer. | openEO processes `sar_backscatter`, `apply`, `apply_kernel`, `rename_labels`, `merge_cubes`; **plotting** binary image |
 | [ForestFire](./ForestFire/)               | `Jupyter`   | Wildfire mapping using Sentinel-2 | openEO processes `apply_kernel`,`ndvi` `spectral_nidices.compute_indices`; **plotting** comparative visualisation; **Awesome Spectral Indices** |
-
+| [Heatwave](./Heatwave/)               | `Jupyter`   | Heatwave mapping using LST layer. | openEO processes `mask`, `apply_dimension`, `reduce_dimension`; **plotting** Total number of days |
 
 
 ## Contributing
