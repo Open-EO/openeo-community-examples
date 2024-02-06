@@ -1,22 +1,22 @@
 import numpy as np
-import xarray
-from openeo.udf import XarrayDataCube
+from xarray import DataArray
 from skimage import segmentation
 from skimage.filters import sobel
 from skimage import graph
 
 
-def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
-    # get the underlying numpy array
-    inarray = cube.get_array().squeeze("t", drop=True).squeeze("bands", drop=True)
-    inimage = inarray.values
+def apply_datacube(cube: DataArray, context: dict) -> DataArray:
+    # get the underlying numpy array without the bands and t dimension
+    np_array = cube.squeeze("t", drop=True)\
+        .squeeze("bands", drop=True)\
+        .values
 
     # compute edges
-    edges = sobel(inimage)
+    edges = sobel(np_array)
 
     # Perform felzenszwalb segmentation
     segment = np.array(
-        segmentation.felzenszwalb(inimage, scale=120, sigma=0.0, min_size=30, channel_axis=None)
+        segmentation.felzenszwalb(np_array, scale=120, sigma=0.0, min_size=30, channel_axis=None)
     ).astype(np.int32)
 
     # Perform the rag boundary analysis and merge the segments
@@ -36,15 +36,15 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         counter += 1
 
     mergedsegment = mergedsegment.astype(float)
-    mergedsegment[inimage < 0.3] = np.nan
+    mergedsegment[np_array < 0.3] = np.nan
     mergedsegment[mergedsegment < 0] = 0
 
-    outarr = xarray.DataArray(
-        mergedsegment.reshape(cube.get_array().shape),
-        dims=cube.get_array().dims,
-        coords=cube.get_array().coords,
+    outarr = DataArray(
+        mergedsegment.reshape(cube.shape),
+        dims=cube.dims,
+        coords=cube.coords,
     )
     outarr = outarr.astype(np.float64)
     outarr = outarr.where(outarr != 0, np.nan)
 
-    return XarrayDataCube(outarr)
+    return outarr
