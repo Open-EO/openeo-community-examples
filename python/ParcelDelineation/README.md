@@ -21,5 +21,6 @@ Tuning by:
 
 ## Running the example
 
-You will require an openEO account to run the example. The [openEO platform](https://openeo.cloud/) offers various options for this.
+Most openEO providers require an account to run the example. They offer various options for this, often providing you with some trial to test out the platform.
+You can find all known openEO providers on the [openEO hub](https://hub.openeo.org/).
 
