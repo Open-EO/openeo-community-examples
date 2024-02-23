@@ -19,6 +19,7 @@ Environments: `Python` (plain Python code), `Jupyter` (e.g. Notebooks)
 | [RankComposites](./RankComposites/)         | `Jupyter`   | Max NDVI compositing in openEO. |
 | [RescaleChunks](./RescaleChunks/)           | `Jupyter`   | The creation of a simple process to rescale Sentinel 2 RGB image along with the use of chunk_polygon apply with a (User Defined Function) UDF. |
 | [WorldCereal](./WorldCereal/)               | `Jupyter`   | WorldCereal data extraction sample. |
+| [RVI](./RVI/)               | `Jupyter`   | Calculate Radar Vegetation Index |
 
 
 
