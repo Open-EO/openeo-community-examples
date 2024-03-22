@@ -22,7 +22,7 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 | [RescaleChunks](./RescaleChunks/)           | `Jupyter`   | The creation of a simple process to rescale Sentinel 2 RGB image along with the use of chunk_polygon apply with a (User Defined Function) UDF. | openEO processes `run_udf`, `chunk_polygon`, `reduce_dimension` |
 | [WorldCereal](./WorldCereal/)               | `Jupyter`   | WorldCereal data extraction sample. | openEO processes `merge_cubes`, loading **WorldCereal** data |
 | [RVI](./RVI/)               | `Jupyter`   | Calculate Radar Vegetation Index | openEO processes `sar_backscatter`, `spectral_nidices.compute_indices`; **plotting** mean result and timeseries; **Awesome Spectral Indices** |
-
+| [FillNodata](./FillNodata/)               | `Jupyter`   | Uses Lowess Regression in openEO for Filling Missing Time Series Data¶ | openEO processes `aggregate_temporal_period`, `apply_dimension`; **plotting** mean result and timeseries |
 
 
 ## Contributing
