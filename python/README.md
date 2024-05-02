@@ -10,7 +10,7 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 
 
 | Title | Environment | Backend-used  | Description | Demonstrates |
-|-|-|-|-|
+|-|-|-|-|-|
 | [Anomaly_Detection](./RescaleChunks/) | `Jupyter` | VITO   | Check the crop growth on your field and compare it with similar fields in the region. | Loading data from **WFS**; openEO process `Anomaly_Detection` |
 | [BasicSentinelMerge](./BasicSentinelMerge/) | `Jupyter` | openEO Platform   | Merging Sentinel 1 and 2 in a single datacube for further processing. | openEO processes `merge_cubes`, `mask_scl_dilation`, `aggregate_temporal_period`, `array_interpolate_linear`, `sar_backscatter`, `filter_bbox` |
 | [BurntMapping](./BurntMapping/)             | `Jupyter` | VITO     | Classical Normalized Burnt Ratio(NBR) difference performed using VITO backend on a chunk polygon. The method followed in this notebook to compute DNBR is inspired from [UN SPIDER's recommended practices](https://www.un-spider.org/advisory-support/recommended-practices/recommended-practice-google-earth-engine-flood-mapping). | openEO processes `run_udf`, `chunk_polygon` with polygon loaded from JSON, `reduce_dimension` |
