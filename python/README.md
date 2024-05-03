@@ -11,7 +11,7 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 
 | Title | Environment | Description | Demonstrates |
 |-|-|-|-|
-| [Getting Started](./1.%20GettingStarted/) | `Jupyter`  | A sample notebook to get started for the openEO Beginners | Loading collection from a backend; openEO process `load_collection` |
+| [Getting Started](./1.%20GettingStarted/) | `Jupyter`  | A beginner's sample notebook , featuring a straightforward workflow that illustrates the fundamental steps of accessing and utilizing available collections. | Loading collection from a backend; openEO process `load_collection` |
 | [Anomaly_Detection](./RescaleChunks/) | `Jupyter`  | Check the crop growth on your field and compare it with similar fields in the region. | Loading data from **WFS**; openEO process `Anomaly_Detection` |
 | [BasicSentinelMerge](./BasicSentinelMerge/) | `Jupyter`   | Merging Sentinel 1 and 2 in a single datacube for further processing. | openEO processes `merge_cubes`, `mask_scl_dilation`, `aggregate_temporal_period`, `array_interpolate_linear`, `sar_backscatter`, `filter_bbox` |
 | [BurntMapping](./BurntMapping/)             | `Jupyter`    | Classical Normalized Burnt Ratio(NBR) difference performed using VITO backend on a chunk polygon. The method followed in this notebook to compute DNBR is inspired from [UN SPIDER's recommended practices](https://www.un-spider.org/advisory-support/recommended-practices/recommended-practice-google-earth-engine-flood-mapping). | openEO processes `run_udf`, `chunk_polygon` with polygon loaded from JSON, `reduce_dimension` |
