@@ -71,6 +71,9 @@ def apply_datacube(cube: xr.DataArray, context: Dict) -> xr.DataArray:
         The order of the dimensions can be changed using the transpose method.
         While it is a better practice to do preprocessing using openeo processes, most operations are also available in Xarray. 
     """
+    # Define how you want to handle nan values
+    cube = cube.fillna(0)
+
     # Apply the model for each timestep in the chunk
     output_data = cube.groupby("t").apply(_apply_model)
 
