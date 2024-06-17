@@ -15,13 +15,14 @@ def _load_ort_session(model_name: str) -> ort.InferenceSession:
     Loads an ONNX model from the onnx_models folder and returns an ONNX runtime session.
 
     Extracting the model loading code into a separate function allows us to cache the loaded model.
-    This prevents the model from being loaded for every chunk of data that is processed, but only once per executor.
+    This prevents the model from being loaded for every chunk of data that is processed, but only once per executor,
+    which can save a lot of time, memory and ultimately processing costs.
 
     Should you have to download the model from a remote location, you can add the download code here, and cache the model.
 
     Make sure that the arguments of the method you add the @functools.lru_cache decorator to are hashable.
     Be careful with using this decorator for class methods, as the self argument is not hashable. 
-    In that case, you can use a static method.
+    In that case you can use a static method or make sure your class is hashable (more difficult): https://docs.python.org/3/faq/programming.html#faq-cache-method-calls.
 
     More information on this functool can be found here: 
     https://docs.python.org/3/library/functools.html#functools.lru_cache
