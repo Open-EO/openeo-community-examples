@@ -159,7 +159,7 @@ This only works properly if the processing doesn’t take too long and is focuse
 ```{r}
 # create a job at the back-end using our datacube, giving it the title `Example Title`
 
-job <- create_job(graph=result,title = "EVI using R client")
+job <- create_job(graph=temporal_reduce_evi,title = "EVI using R client")
 
 ```
 
