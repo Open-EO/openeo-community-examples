@@ -30,6 +30,7 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 | [Heatwave](./Heatwave/)               | `Jupyter`   | Heatwave mapping using LST layer. | openEO processes `mask`, `apply_dimension`, `reduce_dimension`; **plotting** Total number of days |
 | [AirQuality](./AirQuality/)               | `Jupyter`   | Explore Sentinel-5P air quality products | openEO processes `merge_cubes`, `aggregate_temporal_period`; **plotting** mean result and timeseries; product's correlation  |
 | [StatisticalDataFill](./StatisticalDataFill/)               | `Jupyter`   | Uses Lowess Regression in openEO for Filling Missing Time Series Data¶ | openEO processes `aggregate_temporal_period`, `apply_dimension`; **plotting** mean result and timeseries ; `SENTINEL_5P_L2`|
+| [DynamicLandCoverMapping](./DynamicLandCoverMapping/)               | `Jupyter`   | A usecase of using Random Forest from openEO¶ | openEO processes `MlModel`, `compute_and_rescale_indices`, `array_create`, `array_concat`, `array_interpolate_linear`; **plotting** predicted land cover mapping ; `SENTINEL2_L2A`, `SENTINEL1_GRD`|
 
 
 ## Contributing
