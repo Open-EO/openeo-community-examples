@@ -125,7 +125,7 @@ Most of the processes offered by openEO services are standardized, which means t
  
 
 ```{r}
-evi_cube <- p$reduce_dimension(data = data, dimension = "bands",reducer = function(data,context) {
+evi_cube <- p$reduce_dimension(data = datacube, dimension = "bands",reducer = function(data,context) {
     B08 = data[1]
     B04 = data[2]
     B02 = data[3]
