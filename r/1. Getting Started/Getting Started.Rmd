@@ -38,7 +38,7 @@ Next, let's set up a connection to an openEO backend using its connection URL. Y
 When using other backends, you can register using your EduGAIN and social login as suggested [here](https://docs.openeo.cloud/join/free_trial.html)
 
 ```{r}
-connection = connect(host = "https://openeo.dataspace.copernicus.eu")
+connect(host = "https://openeo.dataspace.copernicus.eu")
 
 ```
 
