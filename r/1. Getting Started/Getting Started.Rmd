@@ -1,0 +1,172 @@
+---
+title: "Getting started with openEO"
+---
+
+openEO is an open-source initiative that simplifies accessing and processing Earth Observation (EO) data.
+
+Traditional methods involve complex steps like data discovery, download, and pre-processing, which can be time-consuming and challenging, especially when dealing with multiple datasets. openEO standardises this process, providing a unified interface for accessing and processing diverse EO datasets using familiar programming languages like Python, etc. It leverages the concept of datacubes, which streamline the representation and manipulation of EO data, making spatiotemporal analysis more intuitive and efficient.
+
+openEO is used in several applications across a range of EO scenarios, ranging from simple to complex workflows. However, this notebook aims to guide beginners in starting with openEO using the R client.
+
+This notebook is based on existing openEO examples. For more detailed explanations, we recommend checking out the sample notebooks. For a deeper theoretical understanding, you might also find the Eo-college course ["Cubes&Cloud"](https://eo-college.org/courses/cubes-and-clouds/) helpful, as it offers step-by-step guidance and theoretical insights. While the course focuses on the [openEO Python client](https://open-eo.github.io/openeo-python-client/index.html), the concepts still apply when using the R client.
+
+Here, our focus is to help users become acquainted with the general openEO workflow using R. Additionally, we recommend visiting the official [openEO R client](https://open-eo.github.io/openeo-r-client/) documentation for more detailed information on the available functions and their usage.
+
+
+## Installation
+
+Before installing the openEO R-client module, ensure you have atleast version 3.6 of R. Older versions might work but haven't been tested.
+
+You can install stable releases from CRAN:
+
+```{r}
+install.packages("openeo")
+```
+
+You can find additional information on openEO installation in [this page](https://open-eo.github.io/openeo-r-client/#installation).
+
+```{r}
+library(openeo)
+
+```
+
+
+## Connect and authenticate
+
+Next, let's set up a connection to an openEO backend using its connection URL. You can find these URLs for different backends on the [openEO hub](https://hub.openeo.org/). For this notebook, we'll use the Copernicus Data Space Ecosystem, a cloud platform supported by the European Commission, ESA, and Copernicus. Make sure you have an [account](https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/auth?client_id=cdse-public&response_type=code&scope=openid&redirect_uri=https%3A//dataspace.copernicus.eu/account/confirmed/1) to access and process data using openEO.
+
+When using other backends, you can register using your EduGAIN and social login as suggested [here](https://docs.openeo.cloud/join/free_trial.html)
+
+```{r}
+connect(host = "https://openeo.dataspace.copernicus.eu")
+
+```
+
+Basic metadata about collection and processes does not require being logged in. However, for downloading EO data or running processing workflows, it is necessary to authenticate so that permissions, resource usage, etc. can be managed properly.Once registered, user can authenticate as shown below:
+
+```{r}
+login()
+
+```
+
+Calling this method opens the system’s web browser for user authentication. Upon successful authentication, a message confirming the login success will appear on the R console.
+
+## Data discovery and access
+
+The EO data is organised in so-called collections. You can programmatically list the collections that are available on a back-end and their metadata using methods on the connection object. Furthermore, to visualise available collections and metadata in a user-friendly manner, you can also visit the openEO hub or explore backend specific openEO web editor.
+
+### Data discovery
+
+
+```{r}
+# list all the available collections
+list_collections()
+
+```
+
+```{r}
+# Get metadata of a single collection
+describe_collection("SENTINEL2_L2A")
+
+```
+
+Congrats!!!, you now just did your first real openEO queries to the openEO backend using the openEO R client library.
+
+
+### Process discovery
+
+To proceed, it's important to grasp the available built-in processes of openEO. We've already utilized a few of these processes in our earlier queries, like `list_collection_ids` and `describe_collection`.
+
+```{r}
+# list all the available processes
+list_processes()
+```
+
+```{r}
+describe_process("aggregate_temporal")
+
+```
+
+Find more information on these processes in [this page](https://processes.openeo.org/).
+
+
+## Data access
+
+A common task in EO is applying a formula to several spectral bands to compute an ‘index’, such as NDVI, NDWI, EVI, etc. In this tutorial, we’ll go through the steps to extract EVI (enhanced vegetation index) values and timeseries and discuss some openEO concepts along the way.
+
+To calculate the EVI, we need red, blue, and (near) infrared spectral components. These spectral bands are part of the well-known Sentinel-2 data set and are available on the current backend under collection ID `SENTINEL2_L2A`. So, let's load this collection.
+
+```{r}
+p <- processes()
+datacube <- p$load_collection(
+    id = "SENTINEL2_L2A",
+    spatial_extent=list(west = 5.14, south = 51.17, east = 5.17, north = 51.19),
+    temporal_extent=list("2021-02-01", "2021-04-30"),
+    bands=list("B08","B04","B02")
+)
+
+```
+Here, we use the `load_collection` process that loads a collection from the current backend using its ID. It loads the collection as a datacube restricted by spatial_extent, temporal_extent, bands, and properties.
+
+Additionally, by filtering as early as possible (directly in `load_collection()` in this case), we ensure the backend only loads the data we are interested in for better performance and to keep the processing costs low. 
+
+## Data processing: Calculate EVI
+
+While openEO offers a built-in process for calculating NDVI(ndvi()), this capability hasn't yet been implemented for EVI or other indices. Instead, openEO provides support for most other indices through an auxiliary subpackage called Awesome Spectral Indices. Nevertheless, users also have the option to perform band math independently, as demonstrated in this notebook. The choice between the two methods depends on user preference.
+
+In the following cell, we perform the EVI calculation.
+Most of the processes offered by openEO services are standardized, which means that it is possible to use mathematical operators like `+` and `-` and similar coherently between different services. That also allowed us to overload the primitive mathematical operators in R to make it easy to use.
+ 
+
+```{r}
+evi_cube <- p$reduce_dimension(data = datacube, dimension = "bands",reducer = function(data,context) {
+    B08 = data[1]
+    B04 = data[2]
+    B02 = data[3]
+    (2.5 * (B08 - B04)) / sum(B08, 6.0 * B04, -7.5 * B02, 1.0)
+})
+
+```
+
+Please note that while this looks like an actual calculation, no real data processing is being done here. The `evi_cube` object, at this point, is just an abstract representation of our algorithm under construction. The mathematical operators we used here are syntactic sugar for compactly expressing this part of the algorithm.
+
+## Execute the process
+
+Finally, to trigger an actual execution (on the backend), we have to send the above representation to the backend explicitly. You can do this either synchronously(simple download) or using the batch-job-based method. 
+
+Here, let’s perform batch-job processing and save the result as a `GeoTIFF` file. However, a GeoTIFF does not support a temporal dimension, thus, we first should eliminate it by taking the temporal maximum value for each pixel.
+
+```{r}
+temporal_reduce_evi <- p$reduce_dimension(data=evi_cube,dimension = "t", reducer = function(x,y){
+    max(x)
+})
+
+```
+
+```{r}
+# create a job at the back-end using our datacube, giving it the title `Example Title`
+
+job <- create_job(graph=temporal_reduce_evi,title = "EVI using R client")
+
+```
+
+The `create_job` method sends all required information to the backend and registers a new job. However, the job is created at this stage, and to start, it must be explicitly queued for processing:
+
+```{r}
+start_job(job = job)
+
+```
+
+The status updates can be obtained using the `list_jobs()` function. This function provides a list of jobs submitted to the backend. However, it is important to note that only `list_jobs()` refreshes this list. Therefore, to monitor a job, you need to iteratively call either `describe_job()` or update the job list using `list_jobs()`.
+
+Once completed, `download_results()` allows the result to be retrieved. Alternatively, `list_results()` provides an overview of the created files, including download links and encountered error messages.
+
+```{r}
+
+# download all the files into a folder on the file system
+download_results(job = job, folder = "/some/folder/on/filesystem")
+
+```
+
+
+
