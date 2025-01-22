@@ -57,6 +57,7 @@ def process_window_onnx(ndvi_stack, patch_size=128):
 
         ## make 4 predictions per model
         for i in range(number_per_model):
+            np.random.seed(i + number_per_model*model_counter)
             ## define the input data
             input_data = ndvi_stack[
                                 :,
