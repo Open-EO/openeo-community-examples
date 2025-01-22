@@ -83,6 +83,34 @@ def process_window_onnx(ndvi_stack, patch_size=128):
     final_prediction = np.median(prediction, axis=2)
     return final_prediction
 
+
+def preprocess_datacube_new(cubearray: DataArray):
+    # check if bands is in the dims and select the first index
+    if "bands" in cubearray.dims:
+        nvdi_stack = cubearray.isel(bands=0)
+    else:
+        nvdi_stack = cubearray
+
+    # Clamp out of range NDVI values
+    nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack < 0.92, 0.92)
+    nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack > -0.08)       # No data exists id less than -0.08
+    nvdi_stack += 0.08
+
+    # Fill the no data with value 0
+    nvdi_stack_data = nvdi_stack.fillna(0)
+
+    # Count the amount of invalid data per acquisition
+    sum_invalid = nvdi_stack.isnull().sum(dim=['x', 'y'])
+
+    # Select all clear images (without ANY missing values)
+    # or select the 3 best ones (contain nans)
+    if (sum_invalid.data == 0).sum() > 3:
+        good_data = nvdi_stack_data.sel(t = sum_invalid[sum_invalid.data == 0].t)
+    else:
+        good_data = nvdi_stack_data.sel(t = sum_invalid.sortby(sum_invalid).t[:3])
+    return good_data.transpose("x", "y", "t").data
+
+
 def preprocess_datacube(cubearray):
     ## xarray nan to np nan (we will pass a numpy array)
     cubearray = cubearray.where(~ufuncs_isnan(cubearray), np.nan)
@@ -125,7 +153,7 @@ def preprocess_datacube(cubearray):
 
 def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
     ## preprocess the datacube
-    ndvi_stack = preprocess_datacube(cube)
+    ndvi_stack = preprocess_datacube_new(cube)
 
     ## process the window
     result = process_window_onnx(ndvi_stack)
