@@ -3,11 +3,14 @@ import gc
 import sys
 from typing import Dict
 
-import numpy as np
+import random
 import xarray as xr
 from openeo.udf import inspect
-from xarray.ufuncs import isnan as ufuncs_isnan
 from xarray import DataArray
+
+import numpy as np
+from xarray.ufuncs import isnan as ufuncs_isnan
+
 
 # Add the onnx dependencies to the path
 sys.path.insert(0, "onnx_deps")
@@ -34,7 +37,7 @@ def load_ort_sessions(names):
         for model_name in names
     ]
 
-def process_window_onnx(ndvi_stack, patch_size=128):
+def process_window_onnx_old(ndvi_stack, patch_size=128):
     ## check whether you actually supplied 3 images or more
     nr_valid_bands = ndvi_stack.shape[2]
 
@@ -57,15 +60,11 @@ def process_window_onnx(ndvi_stack, patch_size=128):
 
         ## make 4 predictions per model
         for i in range(number_per_model):
-            np.random.seed(i + number_per_model*model_counter)
+            # np.random.seed(i)
+            random.seed(i)
             ## define the input data
-            input_data = ndvi_stack[
-                                :,
-                                :,
-                                np.random.choice(
-                                    np.arange(nr_valid_bands), size=3, replace=False
-                                ),
-                            ].reshape(1, patch_size * patch_size, 3)
+            # input_data = ndvi_stack[:, :,  np.random.choice(np.arange(nr_valid_bands), size=3, replace=False)].reshape(1, patch_size * patch_size, 3)
+            input_data = ndvi_stack[:, :, random.choices(np.arange(nr_valid_bands), k=3)].reshape(1, patch_size * patch_size, 3)
             ort_inputs = {
                 ort_session.get_inputs()[0].name: input_data
             }
@@ -85,7 +84,59 @@ def process_window_onnx(ndvi_stack, patch_size=128):
     return final_prediction
 
 
-def preprocess_datacube_new(cubearray: DataArray):
+def process_window_onnx(ndvi_stack: DataArray, patch_size=128):
+    """Compute predictions.
+
+    Compute predictions using ML models. ML models takes three inputs images and predicts
+    one image. Four predictions are made per model using three random images. Three images
+    are considered to save computational time. Final result is median of these predictions.
+
+    Parameters
+    ----------
+    ndvi_stack : DataArray
+        ndvi data
+    patch_size : Int
+        Size of the sample
+
+    """
+    # we'll do 12 predictions: use 3 networks, and for each random take 3 NDVI bands and repeat 4 times
+    ort_sessions = load_ort_sessions(model_names)    # get models
+    predictions_per_model = 4
+    no_images = ndvi_stack.t.shape[0]
+
+    # Range of index of images
+    _range = range(no_images)
+    # List of all predictions
+    prediction = []
+    for model_index, ort_session in enumerate(ort_sessions):
+        ## make 4 predictions per model
+        for i in range(predictions_per_model):
+            # initialize a predicter array
+            random.seed(i)   # without seed we will have random number leading to non-reproducable results.
+            _idx = random.choices(_range, k=3)
+            # re-shape the input data for ML input 
+            input_data = ndvi_stack.isel(t=_idx).data.reshape(1, patch_size * patch_size, 3)
+            ort_inputs = {ort_session.get_inputs()[0].name: input_data}
+
+            # Run ML to predict
+            ort_outputs = ort_session.run(None, ort_inputs)
+            # reshape ort_outputs and append it to prediction list
+            prediction.append(ort_outputs[0].reshape((patch_size, patch_size)))
+
+    ## free up some memory to avoid memory errors
+    gc.collect()
+
+    # Create a DataArray of all predictions
+    all_predictions = xr.DataArray(prediction, dims=["predict", "x", "y"],
+                                   coords={"predict": range(len(prediction)),
+                                           "x": ndvi_stack.coords["x"],
+                                           "y": ndvi_stack.coords["y"]}
+                                   )
+    ## final prediction is the median of all predictions per pixel
+    return all_predictions.median(dim="predict")
+
+
+def preprocess_datacube(cubearray: DataArray):
     # check if bands is in the dims and select the first index
     if "bands" in cubearray.dims:
         nvdi_stack = cubearray.isel(bands=0)
@@ -109,10 +160,10 @@ def preprocess_datacube_new(cubearray: DataArray):
         good_data = nvdi_stack_data.sel(t = sum_invalid[sum_invalid.data == 0].t)
     else:
         good_data = nvdi_stack_data.sel(t = sum_invalid.sortby(sum_invalid).t[:3])
-    return good_data.transpose("x", "y", "t").data
+    return good_data.transpose("x", "y", "t")
 
 
-def preprocess_datacube(cubearray):
+def preprocess_datacube_old(cubearray):
     ## xarray nan to np nan (we will pass a numpy array)
     cubearray = cubearray.where(~ufuncs_isnan(cubearray), np.nan)
 
@@ -152,14 +203,15 @@ def preprocess_datacube(cubearray):
     ## return the stack
     return ndvi_stack
 
-def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
+
+def apply_datacube_old(cube: DataArray, context: Dict) -> DataArray:
     ## preprocess the datacube
-    ndvi_stack = preprocess_datacube_new(cube)
+    ndvi_stack = preprocess_datacube_old(cube)
 
     ## process the window
-    result = process_window_onnx(ndvi_stack)
+    result = process_window_onnx_old(ndvi_stack)
 
-    ## transform your numpy array predictions into an xarray
+    # ## transform your numpy array predictions into an xarray
     result = result.astype(np.float64)
     result_xarray = xr.DataArray(
         result,
@@ -174,6 +226,27 @@ def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
             "bands": ["prediction"],
         },
     )
+
+    ## Return the resulting xarray
+    return result_xarray
+
+
+def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
+    ## preprocess the datacube
+    ndvi_stack = preprocess_datacube(cube)
+
+    # check number of images after preprocessing
+    # if the stack doesn't have at least 3 bands, we cannot process this window
+    nr_valid_bands = ndvi_stack.t.shape[0]
+    if nr_valid_bands < 3:
+        inspect(message="Not enough input data for this window -> skipping!")
+        return None
+
+    ## process the window
+    result = process_window_onnx(ndvi_stack)
+
+    ## Reintroduce time and bands dimensions
+    result_xarray = result.expand_dims(dim={"t": [(cube.t.dt.year.values[0])], "bands": ["prediction"]})
 
     ## Return the resulting xarray
     return result_xarray
