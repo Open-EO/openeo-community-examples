@@ -1,9 +1,10 @@
 from xarray import DataArray
 from skimage import segmentation, graph
 from skimage.filters import sobel
+from typing import Dict
 
 
-def apply_datacube(cube: DataArray, context: dict) -> DataArray:
+def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
     # get the underlying array without the bands and t dimension
     _data = cube.squeeze("t", drop=True).squeeze("bands", drop=True).values
     # compute edges
