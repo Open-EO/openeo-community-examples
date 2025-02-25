@@ -7,7 +7,7 @@ import xarray as xr
 from openeo.udf import inspect
 
 # Add the onnx dependencies to the path
-sys.path.insert(0, "onnx_deps")
+sys.path.insert(1, "onnx_deps")
 import onnxruntime as ort
 
 
