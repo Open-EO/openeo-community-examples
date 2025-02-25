@@ -51,6 +51,7 @@ def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128):
     """
     # we'll do 12 predictions: use 3 networks, and for each random take 3 NDVI images and repeat 4 times
     ort_sessions = load_ort_sessions(model_names)    # get models
+
     predictions_per_model = 4
     no_rand_images = 3          # Number of random images that are needed for input
     no_images = ndvi_stack.t.shape[0]
@@ -98,41 +99,49 @@ def preprocess_datacube(cubearray: xr.DataArray, min_images: int):
     nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack < 0.92, 0.92)
     nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack > -0.08)       # No data exists id less than -0.08
     nvdi_stack += 0.08
-
+    
+    # Count the amount of invalid data per acquisition
+    sum_invalid = nvdi_stack.isnull().sum(dim=['x', 'y'])
+    # Check % of invalid data per acquisition by using mean
+    sum_invalid_mean = nvdi_stack.isnull().mean(dim=['x', 'y'])
+    
     # Fill the no data with value 0
     nvdi_stack_data = nvdi_stack.fillna(0)
 
-    # Count the amount of invalid data per acquisition
-    sum_invalid = nvdi_stack.isnull().sum(dim=['x', 'y'])
+    # Check if valid number of acquisitions exist for machine learning
+    # Should not contain all nan values
+    # If not enough acquisitions return invalid data as True and an xarray of nan values
+    if (sum_invalid_mean.data < 1).sum() <= min_images:
+        inspect(message="Input data is invalid for this window -> skipping!")
+        # create a nan dataset and return. This can be further returned by apply_datacube
+        nan_data = xr.zeros_like(nvdi_stack.sel(t = sum_invalid_mean.t[0], drop=True))
+        nan_data = nan_data.where(lambda nan_data: nan_data > 1)
+        return True, nan_data   # invalid_data flag and data
 
-    # Select all clear images (without ANY missing values)
-    # or select the 3 best ones (contain nans)
-    if (sum_invalid.data == 0).sum() > min_images:
+    # Good data as machine learning is possible.
+    # If possible select all clear images (without ANY missing values)
+    # Else select the 4 best ones among the missing values
+    if (sum_invalid.data == 0).sum() >= min_images:
         good_data = nvdi_stack_data.sel(t = sum_invalid[sum_invalid.data == 0].t)
     else:
         good_data = nvdi_stack_data.sel(t = sum_invalid.sortby(sum_invalid).t[:min_images])
-    return good_data.transpose("x", "y", "t")
+    return False, good_data.transpose("x", "y", "t")         # invalid_data flag and data
 
 
 def apply_datacube(cube: xr.DataArray, context: Dict) -> xr.DataArray:
-    # select atleast best 3 temporal images of ndvi for ML
-    min_images = 3
+    # select atleast best 4 temporal images of ndvi for ML
+    min_images = 4
     
     # preprocess the datacube
-    ndvi_stack = preprocess_datacube(cube, min_images)
+    invalid_data, ndvi_stack = preprocess_datacube(cube, min_images)
 
-    # check number of images after preprocessing
-    # if the stack doesn't have at least 3 temporal images, we cannot process this window
-    nr_valid_images = ndvi_stack.t.shape[0]
-    if nr_valid_images < min_images:
-        inspect(message="Not enough input data for this window -> skipping!")
-        return None
-
+    # if data is invalid
+    if invalid_data:
+        return ndvi_stack.expand_dims(dim={"t": [(cube.t.dt.year.values[0])], "bands": ["prediction"]})
+    
     # process the window
     result = process_window_onnx(ndvi_stack)
-
     # Reintroduce time and bands dimensions
     result_xarray = result.expand_dims(dim={"t": [(cube.t.dt.year.values[0])], "bands": ["prediction"]})
-
     # Return the resulting xarray
     return result_xarray
