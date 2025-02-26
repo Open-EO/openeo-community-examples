@@ -34,8 +34,8 @@ def load_ort_sessions(names):
     ]
 
 
-def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128):
-    """Compute predictions.
+def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128) -> xr.DataArray:
+    """Compute prediction.
 
     Compute predictions using ML models. ML models takes three inputs images and predicts
     one image. Four predictions are made per model using three random images. Three images
@@ -48,6 +48,10 @@ def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128):
     patch_size : Int
         Size of the sample
 
+    Returns
+    -------
+    xr.DataArray
+        Machine learning prediction.
     """
     # we'll do 12 predictions: use 3 networks, and for each random take 3 NDVI images and repeat 4 times
     ort_sessions = load_ort_sessions(model_names)    # get models
@@ -88,44 +92,61 @@ def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128):
     return all_predictions.median(dim="predict")
 
 
-def preprocess_datacube(cubearray: xr.DataArray, min_images: int):
+def preprocess_datacube(cubearray: xr.DataArray, min_images: int) -> tuple[bool, xr.DataArray]:
+    """Preprocess data for machine learning.
+
+    Preprocess data by clamping NVDI values and first check if the
+    data is valid for machine learning and then check if there is good
+    data to perform machine learning.
+
+    Parameters
+    ----------
+    cubearray : xr.DataArray
+        Input datacube
+    min_images : int
+        Minimum number of samples to consider for machine learning.
+
+    Returns
+    -------
+    bool
+        True refers to data is invalid for machine learning.
+    xr.DataArray
+        If above bool is False, return data for machine learning else returns a
+        sample containing nan (similar to machine learning output).
+    """
+    # Preprocessing data
     # check if bands is in the dims and select the first index
     if "bands" in cubearray.dims:
         nvdi_stack = cubearray.isel(bands=0)
     else:
         nvdi_stack = cubearray
-
     # Clamp out of range NDVI values
     nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack < 0.92, 0.92)
-    nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack > -0.08)       # No data exists id less than -0.08
+    nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack > -0.08)
     nvdi_stack += 0.08
-    
-    # Count the amount of invalid data per acquisition
+    # Count the amount of invalid pixels in each time sample. 
     sum_invalid = nvdi_stack.isnull().sum(dim=['x', 'y'])
-    # Check % of invalid data per acquisition by using mean
+    # Check % of invalid pixels in each time sample by using mean
     sum_invalid_mean = nvdi_stack.isnull().mean(dim=['x', 'y'])
-    
-    # Fill the no data with value 0
+    # Fill the invalid pixels with value 0
     nvdi_stack_data = nvdi_stack.fillna(0)
 
-    # Check if valid number of acquisitions exist for machine learning
-    # Should not contain all nan values
-    # If not enough acquisitions return invalid data as True and an xarray of nan values
-    if (sum_invalid_mean.data < 1).sum() <= min_images:
+    # Check if data is valid for machine learning. If invalid, return True and
+    # an DataArray of nan values (similar to the machine learning output)
+    if (sum_invalid_mean.data < 1).sum() <= min_images:   # number of invalid time sample less then min images
         inspect(message="Input data is invalid for this window -> skipping!")
-        # create a nan dataset and return. This can be further returned by apply_datacube
+        # create a nan dataset and return
         nan_data = xr.zeros_like(nvdi_stack.sel(t = sum_invalid_mean.t[0], drop=True))
         nan_data = nan_data.where(lambda nan_data: nan_data > 1)
-        return True, nan_data   # invalid_data flag and data
+        return True, nan_data
 
-    # Good data as machine learning is possible.
-    # If possible select all clear images (without ANY missing values)
-    # Else select the 4 best ones among the missing values
+    # Data selection: valid data for machine learning
+    # select time samples where there are no invalid pixels
     if (sum_invalid.data == 0).sum() >= min_images:
         good_data = nvdi_stack_data.sel(t = sum_invalid[sum_invalid.data == 0].t)
-    else:
+    else:      # select the 4 best time samples with least amount of invalid pixels.
         good_data = nvdi_stack_data.sel(t = sum_invalid.sortby(sum_invalid).t[:min_images])
-    return False, good_data.transpose("x", "y", "t")         # invalid_data flag and data
+    return False, good_data.transpose("x", "y", "t")
 
 
 def apply_datacube(cube: xr.DataArray, context: Dict) -> xr.DataArray:
@@ -135,11 +156,12 @@ def apply_datacube(cube: xr.DataArray, context: Dict) -> xr.DataArray:
     # preprocess the datacube
     invalid_data, ndvi_stack = preprocess_datacube(cube, min_images)
 
-    # if data is invalid
+    # If data is invalid, there is no need to run prediction algorithm so
+    # return prediction as nan DataArray and reintroduce time and bands dimensions 
     if invalid_data:
         return ndvi_stack.expand_dims(dim={"t": [(cube.t.dt.year.values[0])], "bands": ["prediction"]})
     
-    # process the window
+    # Machine learning prediction: process the window
     result = process_window_onnx(ndvi_stack)
     # Reintroduce time and bands dimensions
     result_xarray = result.expand_dims(dim={"t": [(cube.t.dt.year.values[0])], "bands": ["prediction"]})
