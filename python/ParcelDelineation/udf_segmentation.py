@@ -53,25 +53,31 @@ def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128) -> xr.DataArra
     xr.DataArray
         Machine learning prediction.
     """
-    # we'll do 12 predictions: use 3 networks, and for each random take 3 NDVI images and repeat 4 times
-    ort_sessions = load_ort_sessions(model_names)    # get models
+    # Do 12 predictions: use 3 networks, and for each take 3 random NDVI images and repeat 4 times
+    ort_sessions = load_ort_sessions(model_names)  # get models
 
     predictions_per_model = 4
-    no_rand_images = 3          # Number of random images that are needed for input
+    no_rand_images = 3  # Number of random images that are needed for input
     no_images = ndvi_stack.t.shape[0]
-    
-    # Range of index of images
-    _range = range(no_images)
+
+    # Range of index of images for random index selection
+    images_range = range(no_images)
     # List of all predictions
     prediction = []
     for ort_session in ort_sessions:
         # make 4 predictions per model
         for i in range(predictions_per_model):
             # initialize a predicter array
-            random.seed(i)   # without seed we will have random number leading to non-reproducible results.
-            _idx = random.choices(_range, k=no_rand_images) # Random selection of 3 images for input
-            # re-shape the input data for ML input 
-            input_data = ndvi_stack.isel(t=_idx).data.reshape(1, patch_size * patch_size, no_rand_images)
+            # Seed to lead to a reproducible results.
+            seed(i)
+            # Random selection of 3 images for input
+            idx = sample(images_range, k=no_rand_images)
+            # log a message that the selected indices are not at least a week away
+            if len(set((ndvi_stack.isel(t=idx)).t.dt.isocalendar().week.data)) != no_rand_images:
+                inspect(message="Time difference is not larger than a week for good parcel delineation")
+
+            # re-shape the input data for ML input
+            input_data = ndvi_stack.isel(t=idx).data.reshape(1, patch_size * patch_size, no_rand_images)
             ort_inputs = {ort_session.get_inputs()[0].name: input_data}
 
             # Run ML to predict
