@@ -1,24 +1,26 @@
-import functools
-import gc
-import sys
-from typing import Dict
-import random
-import xarray as xr
+from functools import lru_cache
+from gc import collect as gc_collect
+from sys import path
+from typing import Dict, Tuple
+from random import seed, sample
+from xarray import DataArray, zeros_like
 from openeo.udf import inspect
 
 # Add the onnx dependencies to the path
-sys.path.insert(1, "onnx_deps")
+path.insert(1, "onnx_deps")
 import onnxruntime as ort
 
 
-model_names = frozenset([
-    "BelgiumCropMap_unet_3BandsGenerator_Network1.onnx",
-    "BelgiumCropMap_unet_3BandsGenerator_Network2.onnx",
-    "BelgiumCropMap_unet_3BandsGenerator_Network3.onnx",
-])
+model_names = frozenset(
+    [
+        "BelgiumCropMap_unet_3BandsGenerator_Network1.onnx",
+        "BelgiumCropMap_unet_3BandsGenerator_Network2.onnx",
+        "BelgiumCropMap_unet_3BandsGenerator_Network3.onnx",
+    ]
+)
 
 
-@functools.lru_cache(maxsize=1)
+@lru_cache(maxsize=1)
 def load_ort_sessions(names):
     """
     Load the models and make the prediction functions.
@@ -28,13 +30,10 @@ def load_ort_sessions(names):
     @return: Loaded model sessions
     """
     # inspect(message="Loading convolutional neural networks as ONNX runtime sessions ...")
-    return [
-        ort.InferenceSession(f"onnx_models/{model_name}")
-        for model_name in names
-    ]
+    return [ort.InferenceSession(f"onnx_models/{model_name}") for model_name in names]
 
 
-def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128) -> xr.DataArray:
+def process_window_onnx(ndvi_stack: DataArray, patch_size=128) -> DataArray:
     """Compute prediction.
 
     Compute predictions using ML models. ML models takes three inputs images and predicts
@@ -86,19 +85,36 @@ def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128) -> xr.DataArra
             prediction.append(ort_outputs[0].reshape((patch_size, patch_size)))
 
     # free up some memory to avoid memory errors
-    gc.collect()
+    gc_collect()
 
     # Create a DataArray of all predictions
-    all_predictions = xr.DataArray(prediction, dims=["predict", "x", "y"],
-                                   coords={"predict": range(len(prediction)),
-                                           "x": ndvi_stack.coords["x"],
-                                           "y": ndvi_stack.coords["y"]}
-                                   )
+    all_predictions = DataArray(
+        prediction,
+        dims=["predict", "x", "y"],
+        coords={
+            "predict": range(len(prediction)),
+            "x": ndvi_stack.coords["x"],
+            "y": ndvi_stack.coords["y"],
+        },
+    )
     # final prediction is the median of all predictions per pixel
     return all_predictions.median(dim="predict")
 
 
-def preprocess_datacube(cubearray: xr.DataArray, min_images: int) -> tuple[bool, xr.DataArray]:
+def get_valid_ml_inputs(nvdi_stack_data: DataArray, sum_invalid, min_images: int) -> DataArray:
+    """Machine learning inputs
+
+    Extract ML inputs based on how good the data is
+
+    """
+    if (sum_invalid.data == 0).sum() >= min_images:
+        good_data = nvdi_stack_data.sel(t=sum_invalid[sum_invalid.data == 0].t)
+    else:  # select the 4 best time samples with least amount of invalid pixels.
+        good_data = nvdi_stack_data.sel(t=sum_invalid.sortby(sum_invalid).t[:min_images])
+    return good_data
+
+
+def preprocess_datacube(cubearray: DataArray, min_images: int) -> Tuple[bool, DataArray]:
     """Preprocess data for machine learning.
 
     Preprocess data by clamping NVDI values and first check if the
@@ -130,43 +146,40 @@ def preprocess_datacube(cubearray: xr.DataArray, min_images: int) -> tuple[bool,
     nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack < 0.92, 0.92)
     nvdi_stack = nvdi_stack.where(lambda nvdi_stack: nvdi_stack > -0.08)
     nvdi_stack += 0.08
-    # Count the amount of invalid pixels in each time sample. 
-    sum_invalid = nvdi_stack.isnull().sum(dim=['x', 'y'])
+    # Count the amount of invalid pixels in each time sample.
+    sum_invalid = nvdi_stack.isnull().sum(dim=["x", "y"])
     # Check % of invalid pixels in each time sample by using mean
-    sum_invalid_mean = nvdi_stack.isnull().mean(dim=['x', 'y'])
+    sum_invalid_mean = nvdi_stack.isnull().mean(dim=["x", "y"])
     # Fill the invalid pixels with value 0
     nvdi_stack_data = nvdi_stack.fillna(0)
 
     # Check if data is valid for machine learning. If invalid, return True and
     # an DataArray of nan values (similar to the machine learning output)
-    if (sum_invalid_mean.data < 1).sum() <= min_images:   # number of invalid time sample less then min images
+    # The number of invalid time sample less then min images
+    if (sum_invalid_mean.data < 1).sum() <= min_images:
         inspect(message="Input data is invalid for this window -> skipping!")
         # create a nan dataset and return
-        nan_data = xr.zeros_like(nvdi_stack.sel(t = sum_invalid_mean.t[0], drop=True))
+        nan_data = zeros_like(nvdi_stack.sel(t=sum_invalid_mean.t[0], drop=True))
         nan_data = nan_data.where(lambda nan_data: nan_data > 1)
         return True, nan_data
-
     # Data selection: valid data for machine learning
     # select time samples where there are no invalid pixels
-    if (sum_invalid.data == 0).sum() >= min_images:
-        good_data = nvdi_stack_data.sel(t = sum_invalid[sum_invalid.data == 0].t)
-    else:      # select the 4 best time samples with least amount of invalid pixels.
-        good_data = nvdi_stack_data.sel(t = sum_invalid.sortby(sum_invalid).t[:min_images])
+    good_data = get_valid_ml_inputs(nvdi_stack_data, sum_invalid, min_images)
     return False, good_data.transpose("x", "y", "t")
 
 
-def apply_datacube(cube: xr.DataArray, context: Dict) -> xr.DataArray:
+def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
     # select atleast best 4 temporal images of ndvi for ML
     min_images = 4
-    
+
     # preprocess the datacube
     invalid_data, ndvi_stack = preprocess_datacube(cube, min_images)
 
     # If data is invalid, there is no need to run prediction algorithm so
-    # return prediction as nan DataArray and reintroduce time and bands dimensions 
+    # return prediction as nan DataArray and reintroduce time and bands dimensions
     if invalid_data:
         return ndvi_stack.expand_dims(dim={"t": [(cube.t.dt.year.values[0])], "bands": ["prediction"]})
-    
+
     # Machine learning prediction: process the window
     result = process_window_onnx(ndvi_stack)
     # Reintroduce time and bands dimensions

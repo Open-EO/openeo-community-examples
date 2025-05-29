@@ -2,15 +2,17 @@ from xarray import DataArray
 from skimage import segmentation, graph
 from skimage.filters import sobel
 from typing import Dict
+from openeo.udf import inspect
 
 
 def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
+    inspect(message=f"Dimensions of the final datacube {cube.dims}")
     # get the underlying array without the bands and t dimension
-    _data = cube.squeeze("t", drop=True).squeeze("bands", drop=True).values
+    datacube = cube.squeeze("t", drop=True).squeeze("bands", drop=True).values
     # compute edges
-    edges = sobel(_data)
+    edges = sobel(datacube)
     # Perform felzenszwalb segmentation
-    segment = segmentation.felzenszwalb(_data, scale=120, sigma=0.0, min_size=30, channel_axis=None)
+    segment = segmentation.felzenszwalb(datacube, scale=120, sigma=0.0, min_size=30, channel_axis=None)
     # Perform the rag boundary analysis and merge the segments
     bgraph = graph.rag_boundary(segment, edges)
     # merging segments
