@@ -1,7 +1,7 @@
 import functools
 import gc
 import sys
-from typing import Dict
+from typing import Dict, Tuple
 import random
 import xarray as xr
 from openeo.udf import inspect
@@ -92,7 +92,7 @@ def process_window_onnx(ndvi_stack: xr.DataArray, patch_size=128) -> xr.DataArra
     return all_predictions.median(dim="predict")
 
 
-def preprocess_datacube(cubearray: xr.DataArray, min_images: int) -> tuple[bool, xr.DataArray]:
+def preprocess_datacube(cubearray: xr.DataArray, min_images: int) -> Tuple[bool, xr.DataArray]:
     """Preprocess data for machine learning.
 
     Preprocess data by clamping NVDI values and first check if the
