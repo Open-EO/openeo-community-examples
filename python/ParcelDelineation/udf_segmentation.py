@@ -1,13 +1,13 @@
 from functools import lru_cache
 from gc import collect as gc_collect
-from sys import path
+import sys
 from typing import Dict, Tuple
 from random import seed, sample
 from xarray import DataArray, zeros_like
 from openeo.udf import inspect
 
 # Add the onnx dependencies to the path
-path.insert(1, "onnx_deps")
+sys.path.insert(1, "onnx_deps")
 import onnxruntime as ort
 
 
@@ -171,15 +171,12 @@ def preprocess_datacube(cubearray: DataArray, min_images: int) -> Tuple[bool, Da
 def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
     # select atleast best 4 temporal images of ndvi for ML
     min_images = 4
-
     # preprocess the datacube
     invalid_data, ndvi_stack = preprocess_datacube(cube, min_images)
-
     # If data is invalid, there is no need to run prediction algorithm so
     # return prediction as nan DataArray and reintroduce time and bands dimensions
     if invalid_data:
         return ndvi_stack.expand_dims(dim={"t": [(cube.t.dt.year.values[0])], "bands": ["prediction"]})
-
     # Machine learning prediction: process the window
     result = process_window_onnx(ndvi_stack)
     # Reintroduce time and bands dimensions
