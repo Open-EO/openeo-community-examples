@@ -1,5 +1,5 @@
 from functools import lru_cache
-from gc import collect as gc_collect
+import gc
 import sys
 from typing import Dict, Tuple
 from random import seed, sample
@@ -85,7 +85,7 @@ def process_window_onnx(ndvi_stack: DataArray, patch_size=128) -> DataArray:
             prediction.append(ort_outputs[0].reshape((patch_size, patch_size)))
 
     # free up some memory to avoid memory errors
-    gc_collect()
+    gc.collect()
 
     # Create a DataArray of all predictions
     all_predictions = DataArray(
