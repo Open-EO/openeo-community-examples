@@ -1,13 +1,23 @@
 import functools
 import sys
-from typing import Dict
 import xarray as xr
 import numpy as np
 from openeo.udf.debug import inspect
+from openeo.metadata import CubeMetadata
 
 # The onnx_deps folder contains the extracted contents of the dependencies archive provided in the job options
 sys.path.insert(0, "onnx_deps") 
 import onnxruntime as ort
+
+def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
+    """Rename the bands by using apply metadata
+    :param metadata: Metadata of the input data
+    :param context: Context of the UDF
+    :return: Renamed labels
+    """
+    # rename band labels
+    return metadata.rename_labels(dimension="bands", target=["probability"])
+
 
 @functools.lru_cache(maxsize=5)
 def _load_ort_session(model_name: str) -> ort.InferenceSession:
@@ -55,7 +65,7 @@ def _apply_model(input_xr: xr.DataArray) -> xr.DataArray:
         dims=["bands", "y", "x"],
     )
 
-def apply_datacube(cube: xr.DataArray, context: Dict) -> xr.DataArray:
+def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     """
     Function that is called for each chunk of data that is processed.
     The function name and arguments are defined by the UDF API.
