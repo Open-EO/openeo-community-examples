@@ -5,6 +5,7 @@ from typing import Dict, Tuple
 from random import seed, sample
 from xarray import DataArray, zeros_like
 from openeo.udf import inspect
+from openeo.metadata import CubeMetadata
 
 # Add the onnx dependencies to the path
 sys.path.insert(1, "onnx_deps")
@@ -18,6 +19,15 @@ model_names = frozenset(
         "BelgiumCropMap_unet_3BandsGenerator_Network3.onnx",
     ]
 )
+
+def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
+    """Rename the bands by using apply metadata
+    :param metadata: Metadata of the input data
+    :param context: Context of the UDF
+    :return: Renamed labels
+    """
+    # rename band labels
+    return metadata.rename_labels(dimension="bands", target=["probabilty"])
 
 
 @lru_cache(maxsize=1)

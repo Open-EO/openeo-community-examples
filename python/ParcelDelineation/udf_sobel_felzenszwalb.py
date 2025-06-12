@@ -3,6 +3,17 @@ from skimage import segmentation, graph
 from skimage.filters import sobel
 from typing import Dict
 from openeo.udf import inspect
+from openeo.metadata import CubeMetadata
+
+
+def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
+    """Rename the bands by using apply metadata
+    :param metadata: Metadata of the input data
+    :param context: Context of the UDF
+    :return: Renamed labels
+    """
+    # rename band labels
+    return metadata.rename_labels(dimension="bands", target=["magnitude"])
 
 
 def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
