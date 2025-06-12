@@ -1,10 +1,34 @@
-import xarray as xr
+import xarray
 import numpy as np
-from openeo.udf import XarrayDataCube
 from skimage.feature import graycomatrix, graycoprops
+from openeo.metadata import CollectionMetadata
 
 
-def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
+def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
+    return metadata.rename_labels(
+        dimension = "bands",
+        target = ["contrast","variance","NDFI"]
+    )
+
+
+def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
+    """
+    Applies spatial texture analysis and spectral index computation to a Sentinel-2 data cube.
+
+    Computes:
+    - NDFI (Normalized Difference Fraction Index) from bands B08 and B12
+    - Texture features (contrast and variance) using Gray-Level Co-occurrence Matrix (GLCM)
+
+    Args:
+        cube (xarray.DataArray): A 3D data cube with dimensions (bands, y, x) containing at least bands B08 and B12.
+        context (dict): A context dictionary (currently unused, included for API compatibility).
+
+    Returns:
+        xarray.DataArray: A new data cube with dimensions (bands, y, x) containing:
+                          - 'contrast': GLCM contrast
+                          - 'variance': GLCM variance
+                          - 'NDFI': Normalised Difference Fire Index
+    """
     
     # Parameters
     window_size = 33
@@ -12,11 +36,11 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     levels = 256  # For 8-bit images
     
     # Load Data
-    data = cube.get_array()  # shape: (t, bands, y, x)
+    # data = cube.values # shape: (t, bands, y, x)
     
     #first get NDFI
-    b08 = data.sel(bands="B08")
-    b12 = data.sel(bands="B12")
+    b08 = cube.sel(bands="B08")
+    b12 = cube.sel(bands="B12")
 
     # Compute mean values
     avg_b08 = b08.mean()
@@ -53,7 +77,7 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     textures = xarray.DataArray(
         data=all_texture,
         dims=["bands", "y", "x"],
-        coords={"bands": ["contrast","variance","NDFI"], "y": cube.array.y, "x": cube.array.x},
+        coords={"bands": ["contrast","variance","NDFI"], "y": cube.coords["y"], "x": cube.coords["x"]},
     )
 
-    return XarrayDataCube(textures)
+    return textures
