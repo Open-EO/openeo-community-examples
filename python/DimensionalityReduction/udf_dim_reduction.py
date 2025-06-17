@@ -1,3 +1,13 @@
+# /// script
+# dependencies = [
+#   'joblib==1.4.2',
+#   'scikit-learn==1.3.2',
+#   'netCDF4==1.6.5'
+# ]
+# ///
+#
+# This openEO UDF script implements dimension reduction models from scikit-learn. Packages installed are meanr for modelling and storage handling of the data.
+
 import os
 import functools
 import joblib
@@ -5,14 +15,13 @@ import requests
 import shutil
 import tempfile
 import xarray as xr
-from xarray import DataArray
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import MinMaxScaler
 from urllib.parse import urlparse
 from openeo.udf import inspect
 from openeo.metadata import CubeMetadata
-from typing import Dict
+from typing import Dict, Union
 
 
 def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
@@ -28,11 +37,11 @@ def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
     bands = metadata.band_names  
 
     # Rename only the first `n_components` bands
-    new_band_names = [f"PC{i+1}" for i in range(n_components)] + bands[n_components:]
+    new_band_names = [f"COMP{i+1}" for i in range(n_components)] + bands[n_components:]
     
     # rename and reduce band labels to component labels 
     metadata = metadata.rename_labels(dimension="bands", target=new_band_names)
-    metadata = metadata.filter_bands([f"PC{i+1}" for i in range(n_components)])
+    metadata = metadata.filter_bands([f"COMP{i+1}" for i in range(n_components)])
 
     # rename band labels
     return metadata
@@ -55,13 +64,10 @@ def is_dim_reduction_model_file(file_path: str) -> bool:
         with open(file_path, 'rb') as f:
             model = joblib.load(f)
         
-        print(type(model))
-        
         return isinstance(model, (PCA, TSNE))
 
-    except Exception:
-        # Could not load the pickle file or it is not a PCA/t-SNE model
-        return False
+    except Exception as e:
+        raise ValueError(f"Error loading file: {e}")
 
 
 def download_file(url: str, max_file_size_mb: int = 100, cache_dir: str = "/tmp/cache") -> str:
@@ -111,7 +117,7 @@ def download_file(url: str, max_file_size_mb: int = 100, cache_dir: str = "/tmp/
 
 
 @functools.lru_cache(maxsize=1)
-def load_dim_reduction_model(model_url: str, cache_dir: str = "/tmp/cache") -> PCA | TSNE:
+def load_dim_reduction_model(model_url: str, cache_dir: str = "/tmp/cache") -> Union[PCA, TSNE]:
     """
     Loads an PCA or t-SNE model from a given URL, caches the model locally, and initializes an dimensionality reduction session.
 
@@ -130,19 +136,18 @@ def load_dim_reduction_model(model_url: str, cache_dir: str = "/tmp/cache") -> P
         # Process the model file to ensure it's a valid dimensionality reduction technique model (PCA or t-SNE)
         inspect(message=f"downloading model file from {model_url}...")
         model_path = download_file(model_url, cache_dir=cache_dir)
-        """
-        print(model_path)
+        
         if not is_dim_reduction_model_file(model_path):
             os.remove(model_path)
             raise ValueError(f"Downloaded file is not a valid PCA or t-SNE pickle file.")
-        """
+       
         return joblib.load(model_path)
     
     except Exception as e:
         raise ValueError(f"Failed to load reduction model from {model_url}: {e}")
 
 
-def apply_datacube(cube: DataArray, context: Dict = None) -> DataArray:
+def apply_datacube(cube: xr.DataArray, context: Dict = None) -> xr.DataArray:
     """
     Applies a PCA or t-SNE model on a given data cube for dimensionality reduction. The function ensures that the input
     cube is processed to fill any missing values and is in the correct data type to be compatible with the
@@ -160,10 +165,6 @@ def apply_datacube(cube: DataArray, context: Dict = None) -> DataArray:
     cube = cube.fillna(0)
     cube = cube.astype("float32")
    
-   # Get amount of components from context, Default 2 components
-    n_components = (context or {}).get("n_components", 2)
-    inspect(f"PCA components: {n_components}, Default 2")
-
     # Ensure input is in ('bands', 'y', 'x') order
     cube = cube.transpose('bands', 'y', 'x')
     inspect(f"Input dims: {cube.dims}, shape: {cube.shape}")
@@ -172,28 +173,31 @@ def apply_datacube(cube: DataArray, context: Dict = None) -> DataArray:
     bands, y, x = cube.shape
     data = cube.values.reshape((bands, y * x)).T  # shape: (pixels, bands)
 
-   # Get model URL from context
-    model_url = (context or {}).get("model_url", "")
+   # Get model URL
+    model_path = (context or {}).get("model_url", "")
 
-    # Apply PCA
-    dim_reduction_model = load_dim_reduction_model(model_url=model_url, cache_dir = "/tmp/cache")
+    # Apply Dimensionality Reduction model
+    dim_reduction_model = load_dim_reduction_model(model_url=model_path, cache_dir = "/tmp/cache")
+    n_components = dim_reduction_model.n_components
+    inspect(f"Dimensionality reduction components: {n_components}")
+    inspect(message=f"Fitting dimensionality reduction model...")
     transformed = dim_reduction_model.fit_transform(data)  # shape: (pixels, n_components)
 
-    # Normalize PCA output
+    # Normalize Dimensionality Reduction output
+    inspect(message=f"Normalizing ouput components...")
     scaler = MinMaxScaler()
     transformed_normalized = scaler.fit_transform(transformed)
     
     # Reshape back to (n_components, y, x)
     result_data = transformed_normalized.T.reshape((n_components, y, x))
 
-    # Build coords and return DataArray
+    # Build coords and return xr.DataArray
     coords = {
-        "bands": [f"PC{i+1}" for i in range(n_components)],
+        "bands": [f"COMP{i+1}" for i in range(n_components)],
         "y": cube.coords["y"],
         "x": cube.coords["x"],
     }
-
-    result = DataArray(result_data, dims=("bands", "y", "x"), coords=coords)
+    result = xr.DataArray(result_data, dims=("bands", "y", "x"), coords=coords)
     inspect(f"Output dims: {result.dims}, shape: {result.shape}")
     
     # make sure output Xarray has the correct dtype
