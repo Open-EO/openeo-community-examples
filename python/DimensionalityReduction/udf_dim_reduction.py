@@ -199,6 +199,10 @@ def apply_datacube(cube: xr.DataArray, context: Dict = None) -> xr.DataArray:
     }
     result = xr.DataArray(result_data, dims=("bands", "y", "x"), coords=coords)
     inspect(f"Output dims: {result.dims}, shape: {result.shape}")
+
+    # Attach result cube attrs 
+    result.attrs = cube.attrs
+    result.rename('__xarray_dataarray_components__')
     
     # make sure output Xarray has the correct dtype
     result.astype("float32")
