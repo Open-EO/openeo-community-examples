@@ -119,7 +119,7 @@ def download_file(url: str, max_file_size_mb: int = 100, cache_dir: str = "/tmp/
 @functools.lru_cache(maxsize=1)
 def load_dim_reduction_model(model_url: str, cache_dir: str = "/tmp/cache") -> Union[PCA, TSNE]:
     """
-    Loads an PCA or t-SNE model from a given URL, caches the model locally, and initializes an dimensionality reduction session.
+    Loads aZn PCA or t-SNE model from a given URL, caches the model locally, and initializes an dimensionality reduction session.
 
     The function ensures the dimensionality reduction model is downloaded and locally stored in the specified cache directory
     to optimize repeated access. It also validates if the file is a valid PCA or TSNE model.
