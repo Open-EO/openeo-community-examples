@@ -1,29 +1,32 @@
 import os
 import functools
 import joblib
-import requests
-import shutil
-import tempfile
 import glob
 import xarray as xr
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import MinMaxScaler
-from urllib.parse import urlparse
 from openeo.udf import inspect
 from openeo.metadata import CubeMetadata
 from typing import Dict, Union
 
 
 def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
-    """Rename and filter the bands by using apply metadata
+    """Rename and filter the bands by using apply metadata to only keep dimensionality reduction model components
     
     :param metadata: Metadata of the input data
-    :param context: Context of the UDF
-    :return: Renamed labels
+    :param context: Optional dictionary containing configuration values.
+                    Expected key:
+                        - "model_type" (str): model_type ro tun ("PCA" | "TSNE")
+    :return: Filtered & renamed components of labels
     """
-    # Get amount of components from context
-    n_components = (context or {}).get("n_components", 3)
+    # Get model type
+    model_type = (context or {}).get("model_type", "")
+
+    # Get amount of components from the model in the context
+    dim_reduction_model = load_dim_reduction_model(model_type=model_type)
+    n_components = dim_reduction_model.n_components
+
     # Original list of band names
     bands = metadata.band_names  
 
@@ -64,14 +67,25 @@ def is_dim_reduction_model_file(file_path: str) -> bool:
 
 def find_model_file(model_type: str) -> str:
     """
-    Searches common UDF temp directories for the model file extracted from the job's dependency archive.
+    Locates a serialized dimensionality reduction model file within common temporary directories.
+
+    This function searches recursively through a set of predefined directories (e.g., /tmp, /opt, /mnt, /home)
+    to locate a model file named according to the pattern `dim_reduction_<model_type>.pkl`.
+    It assumes the file has been extracted from the job’s dependency archive into a subdirectory of 
+    structure like `*/work-dir/sklearn-models/`, coressponding to the driver's working directory.
+
+    :param model_type: The type of dimensionality reduction model (e.g., 'PCA', 'TSNE').
+                       This determines the expected filename of the model.
+    :return: The full file path to the located model file.
+    :raises FileNotFoundError: If the model file cannot be found in any of the predefined directories.
     """
     # Look in likely temp dirs
     possible_dirs = ["/tmp", "/opt", "/mnt", "/home"]  # backend-specific
     model_filename = f"dim_reduction_{model_type.lower()}.pkl"
     
     for base_dir in possible_dirs:
-        for path in glob.glob(f"{base_dir}/**/{model_filename}", recursive=True):
+        # Model file should always be unzipped from working-drectory of the Driver
+        for path in glob.glob(f"{base_dir}/**/work-dir/sklearn-models/{model_filename}", recursive=True):
             inspect(message=f"Found model file: {path}")
             return path
     
@@ -122,7 +136,9 @@ def apply_datacube(cube: xr.DataArray, context: Dict = None) -> xr.DataArray:
     https://open-eo.github.io/openeo-python-client/udf.html#udf-function-names-and-signatures
 
     :param cube: The data cube on which dimensionality reduction will be applied. It must be an `xr.DataArray`.
-    :param context: A dictionary that includes the model_type to run
+    :param context: Optional dictionary containing configuration values.
+                    Expected key:
+                        - "model_type" (str): model_type ro tun ("PCA" | "TSNE")
     :return: An `xr.DataArray` representing the processed output cube after successfully applying the model
     """  
     # fill nan in cube and make sure cube is in right dtype for dimensionality reduction
@@ -137,7 +153,7 @@ def apply_datacube(cube: xr.DataArray, context: Dict = None) -> xr.DataArray:
     bands, y, x = cube.shape
     data = cube.values.reshape((bands, y * x)).T  # shape: (pixels, bands)
 
-   # Get model URL
+   # Get model type
     model_type = (context or {}).get("model_type", "")
 
     # Apply Dimensionality Reduction model
