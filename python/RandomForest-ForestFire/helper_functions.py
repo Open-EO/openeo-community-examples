@@ -7,11 +7,6 @@ from rasterio.warp import transform_bounds
 import geopandas as gpd
 import numpy as np
 
-import openeo
-from openeo import Connection
-from openeo.extra.spectral_indices import compute_indices
-from openeo.processes import array_create
-
 # read geojson file as a dict
 def read_json(path: str) -> dict:
     with open(path, "r") as f:

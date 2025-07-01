@@ -42,7 +42,7 @@ def s1_features(connection: Connection, date, aoi, reducer):
             ]
         ),
     )
-
+    
     s1_cube = s1_cube.rename_labels("bands", ["ratio"] + s1_cube.metadata.band_names)
 
     # scale to int16
