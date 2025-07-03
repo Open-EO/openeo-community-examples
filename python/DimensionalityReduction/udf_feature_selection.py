@@ -3,21 +3,16 @@ import functools
 import joblib
 import glob
 import xarray as xr
-import json
 import numpy as np
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from sklearn.preprocessing import MinMaxScaler
 from openeo.metadata import CubeMetadata
-from urllib.parse import urlparse
 from openeo.udf import inspect
 from typing import Union
 
 
-
 def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
     """
-    Filter the significant bands of the dimensionality dredcution model by using apply metadata
+    Filter the significant bands of the dimensionality reduction model by using apply metadata
     
     :param metadata: Metadata of the input data
     :param context: Optional dictionary containing configuration values.
@@ -38,13 +33,13 @@ def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
 
 def is_dim_reduction_model_file(file_path: str) -> bool:
     """
-    Determines if a file is a pickle file that contains a PCA or t-SNE model.
+    Determines if a file is a pickle file that contains a PCA model.
 
     This function checks whether the file has a `.pkl` extension and attempts to load it,
-    verifying that it contains a scikit-learn PCA or t-SNE model.
+    verifying that it contains a scikit-learn PCA model.
 
     :param file_path: The path to the file.
-    :return: True if the file has a `.pkl` extension and contains a PCA or t-SNE model, otherwise False.
+    :return: True if the file has a `.pkl` extension and contains a PCA model, otherwise False.
     """
     if not file_path.endswith(".pkl") or not os.path.isfile(file_path):
         inspect(message=f'Not a valid pickle file')
@@ -53,8 +48,8 @@ def is_dim_reduction_model_file(file_path: str) -> bool:
     try:
         with open(file_path, 'rb') as f:
             model = joblib.load(f)
-        
-        return isinstance(model, (PCA, TSNE))
+
+        return isinstance(model, (PCA))
 
     except Exception as e:
         raise ValueError(f"Error loading file: {e}")
@@ -67,9 +62,9 @@ def find_model_file(model_type: str) -> str:
     This function searches recursively through a set of predefined directories (e.g., /tmp, /opt, /mnt, /home)
     to locate a model file named according to the pattern `dim_reduction_<model_type>.pkl`.
     It assumes the file has been extracted from the job’s dependency archive into a subdirectory of 
-    structure like `*/work-dir/sklearn-models/`, coressponding to the driver's working directory.
+    structure like `*/work-dir/models/`, coressponding to the driver's working directory.
 
-    :param model_type: The type of dimensionality reduction model (e.g., 'PCA', 'TSNE').
+    :param model_type: The type of dimensionality reduction model (e.g., 'PCA').
                        This determines the expected filename of the model.
     :return: The full file path to the located model file.
     :raises FileNotFoundError: If the model file cannot be found in any of the predefined directories.
@@ -80,7 +75,7 @@ def find_model_file(model_type: str) -> str:
     
     for base_dir in possible_dirs:
         # Model file should always be unzipped from working-drectory of the Driver
-        for path in glob.glob(f"{base_dir}/**/work-dir/sklearn-models/{model_filename}", recursive=True):
+        for path in glob.glob(f"{base_dir}/**/work-dir/models/{model_filename}", recursive=True):
             inspect(message=f"Found model file: {path}")
             return path
     
@@ -88,12 +83,12 @@ def find_model_file(model_type: str) -> str:
 
 
 @functools.lru_cache(maxsize=1)
-def load_dim_reduction_model(model_type: str = "PCA") -> Union[PCA, TSNE]:
+def load_dim_reduction_model(model_type: str = "PCA") -> Union[PCA]:
     """
     Loads an PCA model from a given URL, caches the model locally, and initializes an dimensionality reduction session.
 
     The function ensures the dimensionality reduction model is locally stored in the specified driver directory
-    to optimize repeated access. It also validates if the file is a valid PCA or T-SNE model.
+    to optimize repeated access. It also validates if the file is a valid PCA.
 
     :param model_type: The type of model to load. Only "PCA" allowed at the moment.
     :param model_dir: Directory path where the model files are located.
@@ -109,7 +104,7 @@ def load_dim_reduction_model(model_type: str = "PCA") -> Union[PCA, TSNE]:
         model_path = find_model_file(model_type)
         inspect(message=f"Downloading model file from {model_path}...")
 
-        # Process the model file to ensure it's a valid dimensionality reduction technique model (PCA or t-SNE)
+        # Process the model file to ensure it's a valid dimensionality reduction technique model
         if not is_dim_reduction_model_file(model_path):
             raise ValueError(f"No valid {model_type} model file found in directory: {model_path}")
         
@@ -135,7 +130,7 @@ def get_significant_band_mask(context: dict = None):
                           have to consider its corresponding band significant.
     :return: A NumPy array (mask) indicating which spectral bands are significant.
              Shape corresponds to the number of bands in the input data.
-    :raises ValueError: If the dimensionality reduction model used is not PCA (e.g., t-SNE).
+    :raises ValueError: If the dimensionality reduction model used is not PCA (e.g., t-SNE or UMAP).
     """ 
     
     # Get threshold significance
@@ -156,7 +151,7 @@ def get_significant_band_mask(context: dict = None):
         return significant_bands_mask
     else:
         # t-SNE does not have components_, so we cannot select significant bands
-        raise ValueError("Significance-based filtering is only supported with PCA, not T-SNE.")
+        raise ValueError("Significance-based filtering is only supported with PCA, not T-SNE or UMAP")
         
 
 
