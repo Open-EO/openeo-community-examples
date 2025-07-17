@@ -49,35 +49,33 @@ def is_onnx_file(file_path: str) -> bool:
         return True
 
 
-def find_model_file(model_type: str) -> str:
+def find_model_file(model_type_id: str) -> str:
     """
     Locates a serialized dimensionality reduction model file within common temporary directories.
 
-    This function searches recursively through a set of predefined directories (e.g., /tmp, /opt, /mnt, /home)
-    to locate a model file named according to the pattern `dim_reduction_<model_type>.onnx`.
+    This function searches recursively through the working directory
+    to locate a model file named according to the pattern `dim_reduction_<model_type_id>.onnx`.
     It assumes the file has been extracted from the job’s dependency archive into a subdirectory of 
-    structure like `*/work-dir/models/`, coressponding to the driver's working directory.
+    structure like `/opt/*/work-dir/models/`, coressponding to the driver's working directory.
 
-    :param model_type: The type of dimensionality reduction model (e.g., 'PCA', 'TSNE', 'SE', 'LLE').
-                       This determines the expected filename of the model.
+    :param model_type_id: The type of dimensionality reduction model (e.g., 'PCA').
+                          This determines the expected filename of the model.
     :return: The full file path to the located model file.
     :raises FileNotFoundError: If the model file cannot be found in any of the predefined directories.
     """
     # Look in likely temp dirs
-    possible_dirs = ["/tmp", "/opt", "/mnt", "/home"]  # backend-specific
-    model_filename = f"dim_reduction_{model_type.lower()}.onnx"
+    model_filename = f"dim_reduction_{model_type_id.lower()}.onnx"
     
-    for base_dir in possible_dirs:
-        # Model file should always be unzipped from working-drectory of the Driver
-        for path in glob.glob(f"{base_dir}/**/work-dir/onnx_models/**/{model_filename}", recursive=True):
-            inspect(message=f"Found model file: {path}")
-            return path
-    
-    raise FileNotFoundError(f"Model file {model_filename} not found in any of {possible_dirs}")
+    # Model file should always be unzipped from working-directory of the Driver
+    for path in glob.glob(f"/opt/**/work-dir/onnx_models/**/{model_filename}", recursive=True):
+        inspect(message=f"Found model file: {path}")
+        return path
+
+    raise FileNotFoundError(f"Model file {model_filename} not found in the working directory")
 
 
 @functools.lru_cache(maxsize=1)
-def load_dim_reduction_model(model_type: str) -> Tuple[ort.InferenceSession, Dict[str, List[str]]]:
+def load_dim_reduction_model(model_type_id: str) -> Tuple[ort.InferenceSession, Dict[str, List[str]]]:
     """
     Loads a dimensionality reduction from a given URL, caches the model locally, and initializes an dimensionality reduction session.
 
@@ -88,17 +86,13 @@ def load_dim_reduction_model(model_type: str) -> Tuple[ort.InferenceSession, Dic
     :param model_dir: Directory path where the model files are located.
     :return: A dimensionality reduction model
     :raises ValueError: If model_type is invalid or if the model file is not found or invalid.
-    """
-    valid_types = {"PCA"}
-    if model_type not in valid_types:
-        raise ValueError(f"Invalid model_type '{model_type}'. Must be one of {valid_types}")
-    
+    """    
     # Process the model file to ensure it's a valid dimensionality reduction technique model
-    model_path = find_model_file(model_type)
+    model_path = find_model_file(model_type_id)
     inspect(message=f"Downloading model file from {model_path}...")
 
     if not is_onnx_file(model_path):
-        raise ValueError(f"No valid {model_type} model file found in directory: {model_path}")
+        raise ValueError(f"No valid {model_type_id} model file found in directory: {model_path}")
     inspect(message=f"Found valid model file: {model_path}")
 
     # Initialize the ONNX Runtime session
@@ -163,7 +157,7 @@ def significant_bands_from_pca(context: dict = None):
             top_k = None
 
     # Spin up ONNX Runtime session
-    session, metadata = load_dim_reduction_model("PCA")
+    session, metadata = load_dim_reduction_model(model_type_id="PCA")
     input_name = session.get_inputs()[0].name
     n_bands = len(metadata["input_features"])
 
