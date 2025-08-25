@@ -18,10 +18,12 @@ def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
     
     :param metadata: Metadata of the input data
    
-     :param context: Optional dictionary containing configuration values.
-                    Expected key:
-                        - "threshold" (float): The minimum absolute value a component loading must
-                          have to consider its corresponding band significant.
+    :param context: Optional dictionary containing configuration values. Expected key(s):
+
+        - **threshold(float):** Normalized contribution score threshold. Bands with scores below this are discarded.
+        Ignored if `top_k` is provided.
+        - **top_k (int):** If given, returns exactly the top_k bands by contribution score.
+
     :return: Filtered bands
     """
     # Get bands to filter or get original bands
@@ -32,39 +34,21 @@ def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
     return metadata
 
 
-def is_onnx_file(file_path: str) -> bool:
-    """
-    Determines if a file is an ONNX file based on its extension.
-
-    This function checks the provided file path and determines whether the file
-    is an ONNX file by checking if the file name ends with the `.onnx` file extension.
-
-    :param file_path: The path to the file whose extension is to be verified.
-    :return: True if the file has a `.onnx` extension, otherwise False.
-    """
-    if not file_path.endswith(".onnx") or not os.path.isfile(file_path):
-        inspect(message=f'Not a valid ONNX file')
-        return False
-    else: 
-        return True
-
-
-def find_model_file(model_type_id: str) -> str:
+def find_model_file(model_id: str) -> str:
     """
     Locates a serialized dimensionality reduction model file within common temporary directories.
 
     This function searches recursively through the working directory
-    to locate a model file named according to the pattern `dim_reduction_<model_type_id>.onnx`.
+    to locate a model file named according to the pattern `<model_id>.onnx`.
     It assumes the file has been extracted from the job’s dependency archive into a subdirectory of 
-    structure like `/opt/*/work-dir/models/`, coressponding to the driver's working directory.
+    structure like `/opt/*/work-dir/models/`, corresponding to the driver's working directory.
 
-    :param model_type_id: The type of dimensionality reduction model (e.g., 'PCA').
-                          This determines the expected filename of the model.
+    :param model_id: The filename of the model, whitout the 'onnx' extension
     :return: The full file path to the located model file.
     :raises FileNotFoundError: If the model file cannot be found in any of the predefined directories.
     """
     # Look in likely temp dirs
-    model_filename = f"dim_reduction_{model_type_id.lower()}.onnx"
+    model_filename = f"{model_id.lower()}.onnx"
     
     # Model file should always be unzipped from working-directory of the Driver
     for path in glob.glob(f"/opt/**/work-dir/onnx_models/**/{model_filename}", recursive=True):
@@ -75,25 +59,20 @@ def find_model_file(model_type_id: str) -> str:
 
 
 @functools.lru_cache(maxsize=1)
-def load_dim_reduction_model(model_type_id: str) -> Tuple[ort.InferenceSession, Dict[str, List[str]]]:
+def load_pca_model(model_id: str) -> Tuple[ort.InferenceSession, Dict[str, List[str]]]:
     """
     Loads a dimensionality reduction from a given URL, caches the model locally, and initializes an dimensionality reduction session.
 
     The function ensures the dimensionality reduction model is locally stored in the specified driver directory
     to optimize repeated access. It also validates if the file is a dimensionality reduction model.
 
-    :param model_type: The type of model to load. Must be either "PCA".
-    :param model_dir: Directory path where the model files are located.
+    :param model_id: The filename of the model, whitout the 'onnx' extension
     :return: A dimensionality reduction model
     :raises ValueError: If model_type is invalid or if the model file is not found or invalid.
     """    
     # Process the model file to ensure it's a valid dimensionality reduction technique model
-    model_path = find_model_file(model_type_id)
+    model_path = find_model_file(model_id)
     inspect(message=f"Downloading model file from {model_path}...")
-
-    if not is_onnx_file(model_path):
-        raise ValueError(f"No valid {model_type_id} model file found in directory: {model_path}")
-    inspect(message=f"Found valid model file: {model_path}")
 
     # Initialize the ONNX Runtime session
     inspect(message=f"Initializing ONNX Runtime session for model at {model_path}...")
@@ -143,6 +122,7 @@ def significant_bands_from_pca(context: dict = None):
         - labels (np.ndarray): band coordinate labels if `cube` is an xarray with coords.
     """
     # Get context parameters:
+    model_id = (context or {}).get("model_id", None)
     threshold = (context or {}).get("threshold", None)
     top_k = (context or {}).get("top_k", None)
     if threshold is not None:
@@ -157,7 +137,7 @@ def significant_bands_from_pca(context: dict = None):
             top_k = None
 
     # Spin up ONNX Runtime session
-    session, metadata = load_dim_reduction_model(model_type_id="PCA")
+    session, metadata = load_pca_model(model_id)
     input_name = session.get_inputs()[0].name
     n_bands = len(metadata["input_features"])
 
