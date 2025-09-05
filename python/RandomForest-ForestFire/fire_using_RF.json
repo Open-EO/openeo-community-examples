@@ -1,751 +1,756 @@
 {
-    "process_graph": {
-        "loadmlmodel1": {
-            "process_id": "load_ml_model",
-            "arguments": {
-                "id": "https://openeo.vito.be/openeo/1.2/jobs/j-250611155240431c9d7743b25ed6500d/results/items/ZWNjZTlmZWEwNGI4YzljNzZhYzc2YjQ1YjZiYTAwYzIwZjIxMWJkYTQ4NTZjMTRhYTQ0NzViOGU4ZWQ0MzNjZEBlZ2kuZXU=/d5702c0476b8037d7acde402f38c375d/ml_model_metadata.json?expires=1750263380"
-            }
-        },
-        "loadcollection1": {
-            "process_id": "load_collection",
-            "arguments": {
-                "bands": [
-                    "B02",
-                    "B03",
-                    "B04",
-                    "B08",
-                    "B12"
-                ],
-                "id": "SENTINEL2_L2A",
-                "properties": {
-                    "eo:cloud_cover": {
-                        "process_graph": {
-                            "lte1": {
-                                "process_id": "lte",
-                                "arguments": {
-                                    "x": {
-                                        "from_parameter": "value"
-                                    },
-                                    "y": 80
-                                },
-                                "result": true
-                            }
-                        }
-                    }
-                },
-                "spatial_extent": {
-                    "from_parameter": "spatial_extent"
-                },
-                "temporal_extent": {
-                    "from_parameter": "temporal_extent"
-                }
-            }
-        },
-        "loadcollection2": {
-            "process_id": "load_collection",
-            "arguments": {
-                "bands": [
-                    "SCL"
-                ],
-                "id": "SENTINEL2_L2A",
-                "properties": {
-                    "eo:cloud_cover": {
-                        "process_graph": {
-                            "lte2": {
-                                "process_id": "lte",
-                                "arguments": {
-                                    "x": {
-                                        "from_parameter": "value"
-                                    },
-                                    "y": 80
-                                },
-                                "result": true
-                            }
-                        }
-                    }
-                },
-                "spatial_extent": {
-                    "from_parameter": "spatial_extent"
-                },
-                "temporal_extent": {
-                    "from_parameter": "temporal_extent"
-                }
-            }
-        },
-        "toscldilationmask1": {
-            "process_id": "to_scl_dilation_mask",
-            "arguments": {
-                "data": {
-                    "from_node": "loadcollection2"
-                },
-                "erosion_kernel_size": 3,
-                "kernel1_size": 17,
-                "kernel2_size": 77,
-                "mask1_values": [
-                    2,
-                    4,
-                    5,
-                    6,
-                    7
-                ],
-                "mask2_values": [
-                    3,
-                    8,
-                    9,
-                    10,
-                    11
-                ]
-            }
-        },
-        "mask1": {
-            "process_id": "mask",
-            "arguments": {
-                "data": {
-                    "from_node": "loadcollection1"
-                },
-                "mask": {
-                    "from_node": "toscldilationmask1"
-                }
-            }
-        },
-        "reducedimension1": {
-            "process_id": "reduce_dimension",
-            "arguments": {
-                "data": {
-                    "from_node": "mask1"
-                },
-                "dimension": "t",
-                "reducer": {
-                    "process_graph": {
-                        "median1": {
-                            "process_id": "median",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                }
-                            },
-                            "result": true
-                        }
-                    }
-                }
-            }
-        },
-        "applydimension1": {
-            "process_id": "apply_dimension",
-            "arguments": {
-                "data": {
-                    "from_node": "reducedimension1"
-                },
-                "dimension": "bands",
-                "process": {
-                    "process_graph": {
-                        "arrayelement1": {
-                            "process_id": "array_element",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "index": 3
-                            }
-                        },
-                        "arrayelement2": {
-                            "process_id": "array_element",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "index": 4
-                            }
-                        },
-                        "subtract1": {
-                            "process_id": "subtract",
-                            "arguments": {
-                                "x": {
-                                    "from_node": "arrayelement1"
-                                },
-                                "y": {
-                                    "from_node": "arrayelement2"
-                                }
-                            }
-                        },
-                        "add1": {
-                            "process_id": "add",
-                            "arguments": {
-                                "x": {
-                                    "from_node": "arrayelement1"
-                                },
-                                "y": {
-                                    "from_node": "arrayelement2"
-                                }
-                            }
-                        },
-                        "divide1": {
-                            "process_id": "divide",
-                            "arguments": {
-                                "x": {
-                                    "from_node": "subtract1"
-                                },
-                                "y": {
-                                    "from_node": "add1"
-                                }
-                            }
-                        },
-                        "arrayelement3": {
-                            "process_id": "array_element",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "index": 2
-                            }
-                        },
-                        "subtract2": {
-                            "process_id": "subtract",
-                            "arguments": {
-                                "x": 0.1,
-                                "y": {
-                                    "from_node": "arrayelement3"
-                                }
-                            }
-                        },
-                        "power1": {
-                            "process_id": "power",
-                            "arguments": {
-                                "base": {
-                                    "from_node": "subtract2"
-                                },
-                                "p": 2
-                            }
-                        },
-                        "subtract3": {
-                            "process_id": "subtract",
-                            "arguments": {
-                                "x": 0.06,
-                                "y": {
-                                    "from_node": "arrayelement1"
-                                }
-                            }
-                        },
-                        "power2": {
-                            "process_id": "power",
-                            "arguments": {
-                                "base": {
-                                    "from_node": "subtract3"
-                                },
-                                "p": 2
-                            }
-                        },
-                        "add2": {
-                            "process_id": "add",
-                            "arguments": {
-                                "x": {
-                                    "from_node": "power1"
-                                },
-                                "y": {
-                                    "from_node": "power2"
-                                }
-                            }
-                        },
-                        "divide2": {
-                            "process_id": "divide",
-                            "arguments": {
-                                "x": 1,
-                                "y": {
-                                    "from_node": "add2"
-                                }
-                            }
-                        },
-                        "arraycreate1": {
-                            "process_id": "array_create",
-                            "arguments": {
-                                "data": [
-                                    {
-                                        "from_node": "divide1"
-                                    },
-                                    {
-                                        "from_node": "divide2"
-                                    }
-                                ]
-                            },
-                            "result": true
-                        }
-                    }
-                }
-            }
-        },
-        "renamelabels1": {
-            "process_id": "rename_labels",
-            "arguments": {
-                "data": {
-                    "from_node": "applydimension1"
-                },
-                "dimension": "bands",
-                "target": [
-                    "NBR",
-                    "BAI"
-                ]
-            }
-        },
-        "mergecubes1": {
-            "process_id": "merge_cubes",
-            "arguments": {
-                "cube1": {
-                    "from_node": "reducedimension1"
-                },
-                "cube2": {
-                    "from_node": "renamelabels1"
-                }
-            }
-        },
-        "applyneighborhood1": {
-            "process_id": "apply_neighborhood",
-            "arguments": {
-                "data": {
-                    "from_node": "reducedimension1"
-                },
-                "overlap": [
-                    {
-                        "dimension": "x",
-                        "value": 32,
-                        "unit": "px"
-                    },
-                    {
-                        "dimension": "y",
-                        "value": 32,
-                        "unit": "px"
-                    }
-                ],
-                "process": {
-                    "process_graph": {
-                        "runudf1": {
-                            "process_id": "run_udf",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "runtime": "Python",
-                                "udf": "import xarray as xr\nimport numpy as np\nfrom openeo.udf import XarrayDataCube\nfrom skimage.feature import graycomatrix, graycoprops\nfrom openeo.metadata import CollectionMetadata\n\n\ndef apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:\n    return metadata.rename_labels(\n        dimension = \"bands\",\n        target = [\"contrast\",\"variance\",\"NDFI\"]\n    )\n\n\ndef apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:\n    \"\"\"\n    Applies spatial texture analysis and spectral index computation to a Sentinel-2 data cube.\n\n    Computes:\n    - NDFI (Normalized Difference Fraction Index) from bands B08 and B12\n    - Texture features (contrast and variance) using Gray-Level Co-occurrence Matrix (GLCM)\n\n    Args:\n        cube (xarray.DataArray): A 3D data cube with dimensions (bands, y, x) containing at least bands B08 and B12.\n        context (dict): A context dictionary (currently unused, included for API compatibility).\n\n    Returns:\n        xarray.DataArray: A new data cube with dimensions (bands, y, x) containing:\n                          - 'contrast': GLCM contrast\n                          - 'variance': GLCM variance\n                          - 'NDFI': Normalised Difference Fire Index\n    \"\"\"\n    \n    # Parameters\n    window_size = 33\n    pad = window_size // 2\n    levels = 256  # For 8-bit images\n    \n    # Load Data\n    # data = cube.values # shape: (t, bands, y, x)\n    \n    #first get NDFI\n    b08 = cube.sel(bands=\"B08\")\n    b12 = cube.sel(bands=\"B12\")\n\n    # Compute mean values\n    avg_b08 = b08.mean()\n    avg_b12 = b12.mean()\n\n    # Calculate NDFI\n    ndfi = ((b12 / avg_b12) - (b08 / avg_b08)) / (b08 / avg_b08)\n    \n    # Padding the image to handle border pixels for GLCM\n    padded = np.pad(b12, pad_width=pad, mode='reflect')\n\n    # Normalize to 0–255 range\n    img_norm = (padded - padded.min()) / (padded.max() - padded.min())\n    padded = (img_norm * 255).astype(np.uint8)\n    \n    # Initialize feature maps\n    shape = b12.shape\n    contrast = np.zeros(shape)\n    variance = np.zeros(shape)\n    \n    for i in range(pad, pad + shape[0]):\n        for j in range(pad, pad + shape[1]):\n            window = padded[i - pad:i + pad + 1, j - pad:j + pad + 1]\n            \n            # Compute GLCM\n            glcm = graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)\n            \n            # Texture features\n            contrast[i - pad, j - pad] = graycoprops(glcm, 'contrast')[0, 0]\n            variance[i - pad, j - pad] = np.var(window)\n\n    all_texture = np.stack([contrast,variance,ndfi])\n    # create a data cube with all the calculated properties\n    textures = xarray.DataArray(\n        data=all_texture,\n        dims=[\"bands\", \"y\", \"x\"],\n        coords={\"bands\": [\"contrast\",\"variance\",\"NDFI\"], \"y\": cube.coords[\"y\"], \"x\": cube.coords[\"x\"]},\n    )\n\n    return textures"
-                            },
-                            "result": true
-                        }
-                    }
-                },
-                "size": [
-                    {
-                        "dimension": "x",
-                        "value": 128,
-                        "unit": "px"
-                    },
-                    {
-                        "dimension": "y",
-                        "value": 128,
-                        "unit": "px"
-                    }
-                ]
-            }
-        },
-        "mergecubes2": {
-            "process_id": "merge_cubes",
-            "arguments": {
-                "cube1": {
-                    "from_node": "mergecubes1"
-                },
-                "cube2": {
-                    "from_node": "applyneighborhood1"
-                }
-            }
-        },
-        "loadcollection3": {
-            "process_id": "load_collection",
-            "arguments": {
-                "bands": [
-                    "VH",
-                    "VV"
-                ],
-                "id": "SENTINEL1_GRD",
-                "spatial_extent": {
-                    "from_parameter": "spatial_extent"
-                },
-                "temporal_extent": {
-                    "from_parameter": "temporal_extent"
-                }
-            }
-        },
-        "sarbackscatter1": {
-            "process_id": "sar_backscatter",
-            "arguments": {
-                "coefficient": "sigma0-ellipsoid",
-                "contributing_area": false,
-                "data": {
-                    "from_node": "loadcollection3"
-                },
-                "elevation_model": null,
-                "ellipsoid_incidence_angle": false,
-                "local_incidence_angle": false,
-                "mask": false,
-                "noise_removal": true
-            }
-        },
-        "applydimension2": {
-            "process_id": "apply_dimension",
-            "arguments": {
-                "data": {
-                    "from_node": "sarbackscatter1"
-                },
-                "dimension": "bands",
-                "process": {
-                    "process_graph": {
-                        "arrayelement4": {
-                            "process_id": "array_element",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "index": 0
-                            }
-                        },
-                        "multiply1": {
-                            "process_id": "multiply",
-                            "arguments": {
-                                "x": 30,
-                                "y": {
-                                    "from_node": "arrayelement4"
-                                }
-                            }
-                        },
-                        "arrayelement5": {
-                            "process_id": "array_element",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "index": 1
-                            }
-                        },
-                        "divide3": {
-                            "process_id": "divide",
-                            "arguments": {
-                                "x": {
-                                    "from_node": "multiply1"
-                                },
-                                "y": {
-                                    "from_node": "arrayelement5"
-                                }
-                            }
-                        },
-                        "arrayelement6": {
-                            "process_id": "array_element",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "index": 0
-                            }
-                        },
-                        "log1": {
-                            "process_id": "log",
-                            "arguments": {
-                                "base": 10,
-                                "x": {
-                                    "from_node": "arrayelement6"
-                                }
-                            }
-                        },
-                        "multiply2": {
-                            "process_id": "multiply",
-                            "arguments": {
-                                "x": 10,
-                                "y": {
-                                    "from_node": "log1"
-                                }
-                            }
-                        },
-                        "add3": {
-                            "process_id": "add",
-                            "arguments": {
-                                "x": 30,
-                                "y": {
-                                    "from_node": "multiply2"
-                                }
-                            }
-                        },
-                        "arrayelement7": {
-                            "process_id": "array_element",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "index": 1
-                            }
-                        },
-                        "log2": {
-                            "process_id": "log",
-                            "arguments": {
-                                "base": 10,
-                                "x": {
-                                    "from_node": "arrayelement7"
-                                }
-                            }
-                        },
-                        "multiply3": {
-                            "process_id": "multiply",
-                            "arguments": {
-                                "x": 10,
-                                "y": {
-                                    "from_node": "log2"
-                                }
-                            }
-                        },
-                        "add4": {
-                            "process_id": "add",
-                            "arguments": {
-                                "x": 30,
-                                "y": {
-                                    "from_node": "multiply3"
-                                }
-                            }
-                        },
-                        "arraycreate2": {
-                            "process_id": "array_create",
-                            "arguments": {
-                                "data": [
-                                    {
-                                        "from_node": "divide3"
-                                    },
-                                    {
-                                        "from_node": "add3"
-                                    },
-                                    {
-                                        "from_node": "add4"
-                                    }
-                                ]
-                            },
-                            "result": true
-                        }
-                    }
-                }
-            }
-        },
-        "renamelabels2": {
-            "process_id": "rename_labels",
-            "arguments": {
-                "data": {
-                    "from_node": "applydimension2"
-                },
-                "dimension": "bands",
-                "target": [
-                    "ratio",
-                    "VH",
-                    "VV"
-                ]
-            }
-        },
-        "apply1": {
-            "process_id": "apply",
-            "arguments": {
-                "data": {
-                    "from_node": "renamelabels2"
-                },
-                "process": {
-                    "process_graph": {
-                        "linearscalerange1": {
-                            "process_id": "linear_scale_range",
-                            "arguments": {
-                                "inputMax": 30,
-                                "inputMin": 0,
-                                "outputMax": 30000,
-                                "outputMin": 0,
-                                "x": {
-                                    "from_parameter": "x"
-                                }
-                            },
-                            "result": true
-                        }
-                    }
-                }
-            }
-        },
-        "reducedimension2": {
-            "process_id": "reduce_dimension",
-            "arguments": {
-                "data": {
-                    "from_node": "apply1"
-                },
-                "dimension": "t",
-                "reducer": {
-                    "process_graph": {
-                        "median2": {
-                            "process_id": "median",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                }
-                            },
-                            "result": true
-                        }
-                    }
-                }
-            }
-        },
-        "mergecubes3": {
-            "process_id": "merge_cubes",
-            "arguments": {
-                "cube1": {
-                    "from_node": "mergecubes2"
-                },
-                "cube2": {
-                    "from_node": "reducedimension2"
-                }
-            }
-        },
-        "reducedimension3": {
-            "process_id": "reduce_dimension",
-            "arguments": {
-                "context": {
-                    "from_node": "loadmlmodel1"
-                },
-                "data": {
-                    "from_node": "mergecubes3"
-                },
-                "dimension": "bands",
-                "reducer": {
-                    "process_graph": {
-                        "predictrandomforest1": {
-                            "process_id": "predict_random_forest",
-                            "arguments": {
-                                "data": {
-                                    "from_parameter": "data"
-                                },
-                                "model": {
-                                    "from_parameter": "context"
-                                }
-                            },
-                            "result": true
-                        }
-                    }
-                }
-            },
-            "result": true
-        }
+  "process_graph": {
+    "loadmlmodel1": {
+      "process_id": "load_ml_model",
+      "arguments": {
+        "id": "https://openeo.dataspace.copernicus.eu/openeo/1.2/jobs/j-2509051406514f1faf8edf6e065975c7/results/items/M2UyNGUyNTEtMmU5YS00MzhmLTkwYTktZDQ1MDBlNTc2NTc0/736e65e9ce65801cbc80b64d07280871/ml_model_metadata.json?expires=1757687247"
+      }
     },
-    "id": "fire_using_RF",
-    "summary": "Forest Fire Mapping Using Random Forest in openEO",
-    "description": "Forest fire mapping is a critical tool for environmental monitoring and disaster management, enabling the timely detection and assessment of burned areas. This service is build upon techniques described in the research paper by Zhou, Bao et al., which introduces a machine learning–based approach using Sentinel-2 imagery. Their method combines spectral, topographic, and textural features to improve classification accuracy, particularly emphasising GLCM texture features extracted from Sentinel-2's short-wave infrared band.",
-    "parameters": [
-        {
-            "name": "temporal_extent",
-            "description": "Temporal extent specified as two-element array with start and end date/date-time.",
-            "schema": {
-                "type": "array",
-                "subtype": "temporal-interval",
-                "uniqueItems": true,
-                "minItems": 2,
-                "maxItems": 2,
-                "items": {
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "subtype": "date-time",
-                            "format": "date-time"
-                        },
-                        {
-                            "type": "string",
-                            "subtype": "date",
-                            "format": "date"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                }
+    "loadcollection1": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "B02",
+          "B03",
+          "B04",
+          "B08",
+          "B12"
+        ],
+        "id": "SENTINEL2_L2A",
+        "properties": {
+          "eo:cloud_cover": {
+            "process_graph": {
+              "lte1": {
+                "process_id": "lte",
+                "arguments": {
+                  "x": {
+                    "from_parameter": "value"
+                  },
+                  "y": 80
+                },
+                "result": true
+              }
             }
+          }
+        },
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": {
+          "from_parameter": "temporal_extent"
+        }
+      }
+    },
+    "loadcollection2": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "SCL"
+        ],
+        "id": "SENTINEL2_L2A",
+        "properties": {
+          "eo:cloud_cover": {
+            "process_graph": {
+              "lte2": {
+                "process_id": "lte",
+                "arguments": {
+                  "x": {
+                    "from_parameter": "value"
+                  },
+                  "y": 80
+                },
+                "result": true
+              }
+            }
+          }
+        },
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": {
+          "from_parameter": "temporal_extent"
+        }
+      }
+    },
+    "toscldilationmask1": {
+      "process_id": "to_scl_dilation_mask",
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection2"
+        },
+        "erosion_kernel_size": 3,
+        "kernel1_size": 17,
+        "kernel2_size": 77,
+        "mask1_values": [
+          2,
+          4,
+          5,
+          6,
+          7
+        ],
+        "mask2_values": [
+          3,
+          8,
+          9,
+          10,
+          11
+        ]
+      }
+    },
+    "mask1": {
+      "process_id": "mask",
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection1"
+        },
+        "mask": {
+          "from_node": "toscldilationmask1"
+        }
+      }
+    },
+    "reducedimension1": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mask1"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "median1": {
+              "process_id": "median",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "applydimension1": {
+      "process_id": "apply_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "reducedimension1"
+        },
+        "dimension": "bands",
+        "process": {
+          "process_graph": {
+            "arrayelement1": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 3
+              }
+            },
+            "arrayelement2": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 4
+              }
+            },
+            "subtract1": {
+              "process_id": "subtract",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement1"
+                },
+                "y": {
+                  "from_node": "arrayelement2"
+                }
+              }
+            },
+            "add1": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement1"
+                },
+                "y": {
+                  "from_node": "arrayelement2"
+                }
+              }
+            },
+            "divide1": {
+              "process_id": "divide",
+              "arguments": {
+                "x": {
+                  "from_node": "subtract1"
+                },
+                "y": {
+                  "from_node": "add1"
+                }
+              }
+            },
+            "arrayelement3": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "subtract2": {
+              "process_id": "subtract",
+              "arguments": {
+                "x": 0.1,
+                "y": {
+                  "from_node": "arrayelement3"
+                }
+              }
+            },
+            "power1": {
+              "process_id": "power",
+              "arguments": {
+                "base": {
+                  "from_node": "subtract2"
+                },
+                "p": 2.0
+              }
+            },
+            "subtract3": {
+              "process_id": "subtract",
+              "arguments": {
+                "x": 0.06,
+                "y": {
+                  "from_node": "arrayelement1"
+                }
+              }
+            },
+            "power2": {
+              "process_id": "power",
+              "arguments": {
+                "base": {
+                  "from_node": "subtract3"
+                },
+                "p": 2.0
+              }
+            },
+            "add2": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "power1"
+                },
+                "y": {
+                  "from_node": "power2"
+                }
+              }
+            },
+            "divide2": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1.0,
+                "y": {
+                  "from_node": "add2"
+                }
+              }
+            },
+            "arraycreate1": {
+              "process_id": "array_create",
+              "arguments": {
+                "data": [
+                  {
+                    "from_node": "divide1"
+                  },
+                  {
+                    "from_node": "divide2"
+                  }
+                ]
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "renamelabels1": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "applydimension1"
+        },
+        "dimension": "bands",
+        "target": [
+          "NBR",
+          "BAI"
+        ]
+      }
+    },
+    "mergecubes1": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "reducedimension1"
+        },
+        "cube2": {
+          "from_node": "renamelabels1"
+        }
+      }
+    },
+    "applyneighborhood1": {
+      "process_id": "apply_neighborhood",
+      "arguments": {
+        "context": {
+          "padding_window_size": {
+            "from_parameter": "padding_window_size"
+          }
+        },
+        "data": {
+          "from_node": "reducedimension1"
+        },
+        "overlap": [
+          {
+            "dimension": "x",
+            "value": 32,
+            "unit": "px"
+          },
+          {
+            "dimension": "y",
+            "value": 32,
+            "unit": "px"
+          }
+        ],
+        "process": {
+          "process_graph": {
+            "runudf1": {
+              "process_id": "run_udf",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "runtime": "Python",
+                "udf": "import xarray\nimport numpy as np\nfrom skimage.feature import graycomatrix, graycoprops\nfrom openeo.metadata import CollectionMetadata\n\n\ndef apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:\n    return metadata.rename_labels(\n        dimension = \"bands\",\n        target = [\"contrast\",\"variance\",\"NDFI\"]\n    )\n\n\ndef apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:\n    \"\"\"\n    Applies spatial texture analysis and spectral index computation to a Sentinel-2 data cube.\n\n    Computes:\n    - NDFI (Normalized Difference Fraction Index) from bands B08 and B12\n    - Texture features (contrast and variance) using Gray-Level Co-occurrence Matrix (GLCM)\n\n    Args:\n        cube (xarray.DataArray): A 3D data cube with dimensions (bands, y, x) containing at least bands B08 and B12.\n        context (dict): A context dictionary (currently unused, included for API compatibility).\n\n    Returns:\n        xarray.DataArray: A new data cube with dimensions (bands, y, x) containing:\n                          - 'contrast': GLCM contrast\n                          - 'variance': GLCM variance\n                          - 'NDFI': Normalised Difference Fire Index\n    \"\"\"\n    \n    # Parameters\n    window_size = context.get(\"padding_window_size\", 33)  # Default to 33 if not provided\n    pad = window_size // 2\n    levels = 256  # For 8-bit images\n    \n    # Load Data\n    # data = cube.values # shape: (t, bands, y, x)\n    \n    #first get NDFI\n    b08 = cube.sel(bands=\"B08\")\n    b12 = cube.sel(bands=\"B12\")\n\n    # Compute mean values\n    avg_b08 = b08.mean()\n    avg_b12 = b12.mean()\n\n    # Calculate NDFI\n    ndfi = ((b12 / avg_b12) - (b08 / avg_b08)) / (b08 / avg_b08)\n    \n    # Padding the image to handle border pixels for GLCM\n    padded = np.pad(b12, pad_width=pad, mode='reflect')\n\n    # Normalize to 0\u2013255 range\n    img_norm = (padded - padded.min()) / (padded.max() - padded.min())\n    padded = (img_norm * 255).astype(np.uint8)\n    \n    # Initialize feature maps\n    shape = b12.shape\n    contrast = np.zeros(shape)\n    variance = np.zeros(shape)\n    \n    for i in range(pad, pad + shape[0]):\n        for j in range(pad, pad + shape[1]):\n            window = padded[i - pad:i + pad + 1, j - pad:j + pad + 1]\n            \n            # Compute GLCM\n            glcm = graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)\n            \n            # Texture features\n            contrast[i - pad, j - pad] = graycoprops(glcm, 'contrast')[0, 0]\n            variance[i - pad, j - pad] = np.var(window)\n\n    all_texture = np.stack([contrast,variance,ndfi])\n    # create a data cube with all the calculated properties\n    textures = xarray.DataArray(\n        data=all_texture,\n        dims=[\"bands\", \"y\", \"x\"],\n        coords={\"bands\": [\"contrast\",\"variance\",\"NDFI\"], \"y\": cube.coords[\"y\"], \"x\": cube.coords[\"x\"]},\n    )\n\n    return textures\n"
+              },
+              "result": true
+            }
+          }
+        },
+        "size": [
+          {
+            "dimension": "x",
+            "value": 128,
+            "unit": "px"
+          },
+          {
+            "dimension": "y",
+            "value": 128,
+            "unit": "px"
+          }
+        ]
+      }
+    },
+    "mergecubes2": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "mergecubes1"
+        },
+        "cube2": {
+          "from_node": "applyneighborhood1"
+        }
+      }
+    },
+    "loadcollection3": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "id": "SENTINEL1_GRD",
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": {
+          "from_parameter": "temporal_extent"
+        }
+      }
+    },
+    "sarbackscatter1": {
+      "process_id": "sar_backscatter",
+      "arguments": {
+        "coefficient": "sigma0-ellipsoid",
+        "contributing_area": false,
+        "data": {
+          "from_node": "loadcollection3"
+        },
+        "elevation_model": null,
+        "ellipsoid_incidence_angle": false,
+        "local_incidence_angle": false,
+        "mask": false,
+        "noise_removal": true
+      }
+    },
+    "applydimension2": {
+      "process_id": "apply_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "sarbackscatter1"
+        },
+        "dimension": "bands",
+        "process": {
+          "process_graph": {
+            "arrayelement4": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply1": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 30.0,
+                "y": {
+                  "from_node": "arrayelement4"
+                }
+              }
+            },
+            "arrayelement5": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "divide3": {
+              "process_id": "divide",
+              "arguments": {
+                "x": {
+                  "from_node": "multiply1"
+                },
+                "y": {
+                  "from_node": "arrayelement5"
+                }
+              }
+            },
+            "arrayelement6": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "log1": {
+              "process_id": "log",
+              "arguments": {
+                "base": 10,
+                "x": {
+                  "from_node": "arrayelement6"
+                }
+              }
+            },
+            "multiply2": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 10.0,
+                "y": {
+                  "from_node": "log1"
+                }
+              }
+            },
+            "add3": {
+              "process_id": "add",
+              "arguments": {
+                "x": 30.0,
+                "y": {
+                  "from_node": "multiply2"
+                }
+              }
+            },
+            "arrayelement7": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "log2": {
+              "process_id": "log",
+              "arguments": {
+                "base": 10,
+                "x": {
+                  "from_node": "arrayelement7"
+                }
+              }
+            },
+            "multiply3": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 10.0,
+                "y": {
+                  "from_node": "log2"
+                }
+              }
+            },
+            "add4": {
+              "process_id": "add",
+              "arguments": {
+                "x": 30.0,
+                "y": {
+                  "from_node": "multiply3"
+                }
+              }
+            },
+            "arraycreate2": {
+              "process_id": "array_create",
+              "arguments": {
+                "data": [
+                  {
+                    "from_node": "divide3"
+                  },
+                  {
+                    "from_node": "add3"
+                  },
+                  {
+                    "from_node": "add4"
+                  }
+                ]
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "renamelabels2": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "applydimension2"
+        },
+        "dimension": "bands",
+        "target": [
+          "ratio",
+          "VH",
+          "VV"
+        ]
+      }
+    },
+    "apply1": {
+      "process_id": "apply",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels2"
+        },
+        "process": {
+          "process_graph": {
+            "linearscalerange1": {
+              "process_id": "linear_scale_range",
+              "arguments": {
+                "inputMax": 30,
+                "inputMin": 0,
+                "outputMax": 30000,
+                "outputMin": 0,
+                "x": {
+                  "from_parameter": "x"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension2": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "apply1"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "median2": {
+              "process_id": "median",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "mergecubes3": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "mergecubes2"
+        },
+        "cube2": {
+          "from_node": "reducedimension2"
+        }
+      }
+    },
+    "reducedimension3": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "context": {
+          "from_node": "loadmlmodel1"
+        },
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "predictrandomforest1": {
+              "process_id": "predict_random_forest",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "model": {
+                  "from_parameter": "context"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      },
+      "result": true
+    }
+  },
+  "id": "fire_using_RF",
+  "summary": "Forest Fire Mapping Using Random Forest in openEO",
+  "description": "Forest fire mapping is a critical tool for environmental monitoring and disaster management, enabling the timely detection and assessment of burned areas. This service is build upon techniques described in the research paper by Zhou, Bao et al., which introduces a machine learning\u2013based approach using Sentinel-2 imagery. Their method combines spectral, topographic, and textural features to improve classification accuracy, particularly emphasising GLCM texture features extracted from Sentinel-2's short-wave infrared band.",
+  "parameters": [
+    {
+      "name": "temporal_extent",
+      "description": "Temporal extent specified as two-element array with start and end date/date-time.",
+      "schema": {
+        "type": "array",
+        "subtype": "temporal-interval",
+        "uniqueItems": true,
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "anyOf": [
+            {
+              "type": "string",
+              "subtype": "date-time",
+              "format": "date-time"
+            },
+            {
+              "type": "string",
+              "subtype": "date",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "spatial_extent",
+      "description": "Limits the data to process to the specified bounding box or polygons.",
+      "schema": [
+        {
+          "title": "Bounding Box",
+          "type": "object",
+          "subtype": "bounding-box",
+          "required": [
+            "west",
+            "south",
+            "east",
+            "north"
+          ],
+          "properties": {
+            "west": {
+              "description": "West (lower left corner, coordinate axis 1).",
+              "type": "number"
+            },
+            "south": {
+              "description": "South (lower left corner, coordinate axis 2).",
+              "type": "number"
+            },
+            "east": {
+              "description": "East (upper right corner, coordinate axis 1).",
+              "type": "number"
+            },
+            "north": {
+              "description": "North (upper right corner, coordinate axis 2).",
+              "type": "number"
+            },
+            "base": {
+              "description": "Base (optional, lower left corner, coordinate axis 3).",
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "height": {
+              "description": "Height (optional, upper right corner, coordinate axis 3).",
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "crs": {
+              "description": "Coordinate reference system of the extent, specified as as [EPSG code](http://www.epsg-registry.org/) or [WKT2 CRS string](http://docs.opengeospatial.org/is/18-010r7/18-010r7.html). Defaults to `4326` (EPSG code 4326) unless the client explicitly requests a different coordinate reference system.",
+              "anyOf": [
+                {
+                  "title": "EPSG Code",
+                  "type": "integer",
+                  "subtype": "epsg-code",
+                  "minimum": 1000,
+                  "examples": [
+                    3857
+                  ]
+                },
+                {
+                  "title": "WKT2",
+                  "type": "string",
+                  "subtype": "wkt2-definition"
+                }
+              ],
+              "default": 4326
+            }
+          }
         },
         {
-            "name": "spatial_extent",
-            "description": "Limits the data to process to the specified bounding box or polygons.",
-            "schema": [
-                {
-                    "title": "Bounding Box",
-                    "type": "object",
-                    "subtype": "bounding-box",
-                    "required": [
-                        "west",
-                        "south",
-                        "east",
-                        "north"
-                    ],
-                    "properties": {
-                        "west": {
-                            "description": "West (lower left corner, coordinate axis 1).",
-                            "type": "number"
-                        },
-                        "south": {
-                            "description": "South (lower left corner, coordinate axis 2).",
-                            "type": "number"
-                        },
-                        "east": {
-                            "description": "East (upper right corner, coordinate axis 1).",
-                            "type": "number"
-                        },
-                        "north": {
-                            "description": "North (upper right corner, coordinate axis 2).",
-                            "type": "number"
-                        },
-                        "base": {
-                            "description": "Base (optional, lower left corner, coordinate axis 3).",
-                            "type": [
-                                "number",
-                                "null"
-                            ],
-                            "default": null
-                        },
-                        "height": {
-                            "description": "Height (optional, upper right corner, coordinate axis 3).",
-                            "type": [
-                                "number",
-                                "null"
-                            ],
-                            "default": null
-                        },
-                        "crs": {
-                            "description": "Coordinate reference system of the extent, specified as as [EPSG code](http://www.epsg-registry.org/) or [WKT2 CRS string](http://docs.opengeospatial.org/is/18-010r7/18-010r7.html). Defaults to `4326` (EPSG code 4326) unless the client explicitly requests a different coordinate reference system.",
-                            "anyOf": [
-                                {
-                                    "title": "EPSG Code",
-                                    "type": "integer",
-                                    "subtype": "epsg-code",
-                                    "minimum": 1000,
-                                    "examples": [
-                                        3857
-                                    ]
-                                },
-                                {
-                                    "title": "WKT2",
-                                    "type": "string",
-                                    "subtype": "wkt2-definition"
-                                }
-                            ],
-                            "default": 4326
-                        }
-                    }
-                },
-                {
-                    "title": "Vector data cube",
-                    "description": "Limits the data cube to the bounding box of the given geometries in the vector data cube. For raster data, all pixels inside the bounding box that do not intersect with any of the polygons will be set to no data (`null`). Empty geometries are ignored.",
-                    "type": "object",
-                    "subtype": "datacube",
-                    "dimensions": [
-                        {
-                            "type": "geometry"
-                        }
-                    ]
-                },
-                {
-                    "title": "No filter",
-                    "description": "Don't filter spatially. All data is included in the data cube.",
-                    "type": "null"
-                }
-            ]
+          "title": "Vector data cube",
+          "description": "Limits the data cube to the bounding box of the given geometries in the vector data cube. For raster data, all pixels inside the bounding box that do not intersect with any of the polygons will be set to no data (`null`). Empty geometries are ignored.",
+          "type": "object",
+          "subtype": "datacube",
+          "dimensions": [
+            {
+              "type": "geometry"
+            }
+          ]
+        },
+        {
+          "title": "No filter",
+          "description": "Don't filter spatially. All data is included in the data cube.",
+          "type": "null"
         }
-    ]
+      ]
+    }
+  ]
 }
