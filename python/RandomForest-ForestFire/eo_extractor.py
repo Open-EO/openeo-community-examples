@@ -100,7 +100,7 @@ def s2_features(connection: Connection, date, aoi, reducer):
     indices = compute_indices(cf_cube, indices_list)
 
     # calculate texture features
-    features_udf = openeo.UDF.from_file("features.py")
+    features_udf = openeo.UDF.from_file("rf_feature_extraction_ndfi_glcm.py")
     features = cf_cube.apply_neighborhood(
         process=features_udf,
         size=[
