@@ -50,7 +50,7 @@ def s1_features(connection: Connection, date, aoi, reducer):
 
     return s1_cube.reduce_dimension(reducer=reducer, dimension="t")
 
-def s2_features(connection: Connection, date, aoi, reducer):
+def s2_features(connection: Connection, date, aoi, reducer, padding_window_size):
     """
    Preprocess Sentinel-2 data by loading relevant bands, applying scaling,
    and reducing over time using a specified reducer.
@@ -111,6 +111,10 @@ def s2_features(connection: Connection, date, aoi, reducer):
             {"dimension": "x", "value": 32, "unit": "px"},
             {"dimension": "y", "value": 32, "unit": "px"},
         ],
+        # add context
+        context = {
+            "padding_window_size": padding_window_size
+        }
     )
     
     # combine the original bands with the computed indices,
