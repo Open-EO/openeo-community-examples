@@ -31,7 +31,7 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     """
     
     # Parameters
-    window_size = 33
+    window_size = context.get("padding_window_size", 33)  # Default to 33 if not provided
     pad = window_size // 2
     levels = 256  # For 8-bit images
     
