@@ -13,5 +13,5 @@ The files/folders in this `RandomForest-ForestFire` include:
 - [`eo_extractor.py`](eo_extractor.py): Contains functions for extracting features from Sentinel-1 and Sentinel-2 data.
 - [`helper_functions.py`](helper_functions.py): Provides utility functions for data processing and model training.
 - [`feature_udf_ndfi_glcm.py`](feature_udf_ndfi_glcm.py): Implements feature extraction methods using NDFI and GLCM.
-- [`forest_fire_mapping.py`](forest_fire_mapping.py): The main script that implements the Random Forest model for forest fire mapping.
+- [`fire_using_RF.json`](fire_using_RF.json): The openEO process graph for the Random Forest model inference workflow.
 - [`RandomForestModelInference_AsUDP.ipynb`](RandomForestModelInference_AsUDP.ipynb): A Jupyter notebook that demonstrates how to save the inference workflow as a User-Defined-Process (UDP) for future use.
