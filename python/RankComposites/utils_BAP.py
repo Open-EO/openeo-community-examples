@@ -79,7 +79,7 @@ def calculate_distance_to_cloud_score(binary: openeo.DataCube,
         return np.ceil(f) // 2 * 2 + 1
     # Calculate dtc score
     kernel_size = round_up_to_odd(max_distance * 20 / spatial_resolution)  
-    gaussian_1d = gaussian(M=kernel_size, std=1)
+    gaussian_1d = gaussian(M=kernel_size, std=kernel_size/6)
     gaussian_kernel = np.outer(gaussian_1d, gaussian_1d)
     gaussian_kernel /= gaussian_kernel.sum()
     dtc_score = 1 - binary.apply_kernel(gaussian_kernel)
