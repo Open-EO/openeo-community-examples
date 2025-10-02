@@ -20,16 +20,6 @@ model_names = frozenset(
     ]
 )
 
-def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
-    """Rename the bands by using apply metadata
-    :param metadata: Metadata of the input data
-    :param context: Context of the UDF
-    :return: Renamed labels
-    """
-    # rename band labels
-    return metadata.rename_labels(dimension="bands", target=["probabilty"])
-
-
 @lru_cache(maxsize=1)
 def load_ort_sessions(names):
     """
