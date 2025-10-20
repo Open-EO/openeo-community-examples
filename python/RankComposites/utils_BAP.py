@@ -79,7 +79,7 @@ def calculate_distance_to_cloud_score(binary: openeo.DataCube,
         return np.ceil(f) // 2 * 2 + 1
     # Calculate dtc score
     kernel_size = round_up_to_odd(max_distance * 20 / spatial_resolution)  
-    gaussian_1d = gaussian(M=kernel_size, std=kernel_size/6)
+    gaussian_1d = gaussian(M=kernel_size, std=0.15*kernel_size)
     gaussian_kernel = np.outer(gaussian_1d, gaussian_1d)
     gaussian_kernel /= gaussian_kernel.sum()
     dtc_score = 1 - binary.apply_kernel(gaussian_kernel)
@@ -150,7 +150,7 @@ def date_score_calc(day: openeo.DataCube) -> openeo.DataCube:
     """
     return day.subtract(15).multiply(0.2
                 ).multiply(day.subtract(15).multiply(0.2)
-                ).multiply(-0.5).exp().multiply(0.07978845)  # Until 'power' and 'divide' are fixed, use this workaround
+                ).multiply(-0.5).exp()  # Until 'power' and 'divide' are fixed, use this workaround
 
 def max_score_selection(score: openeo.DataCube) -> openeo.DataCube:
     """
