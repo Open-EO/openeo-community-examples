@@ -1,6 +1,14 @@
+# /// script
+# dependencies = [
+#   "scikit-image",
+# ]
+# ///
+
+import sys
 import xarray
 import numpy as np
-from skimage.feature import graycomatrix, graycoprops
+from openeo.udf import inspect
+from skimage import feature
 from openeo.metadata import CollectionMetadata
 
 
@@ -66,10 +74,10 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
             window = padded[i - pad:i + pad + 1, j - pad:j + pad + 1]
             
             # Compute GLCM
-            glcm = graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)
+            glcm = feature.graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)
             
             # Texture features
-            contrast[i - pad, j - pad] = graycoprops(glcm, 'contrast')[0, 0]
+            contrast[i - pad, j - pad] = feature.graycoprops(glcm, 'contrast')[0, 0]
             variance[i - pad, j - pad] = np.var(window)
 
     all_texture = np.stack([contrast,variance,ndfi])
