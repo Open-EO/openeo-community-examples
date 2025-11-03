@@ -8,7 +8,6 @@ import sys
 import xarray
 import numpy as np
 from openeo.udf import inspect
-from skimage import feature
 from openeo.metadata import CollectionMetadata
 
 
@@ -17,7 +16,6 @@ def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMet
         dimension = "bands",
         target = ["contrast","variance","NDFI"]
     )
-
 
 def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     """
@@ -69,6 +67,7 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     contrast = np.zeros(shape)
     variance = np.zeros(shape)
     
+    from skimage import feature # dependency install feature doesn't work on apply_metadata yet
     for i in range(pad, pad + shape[0]):
         for j in range(pad, pad + shape[1]):
             window = padded[i - pad:i + pad + 1, j - pad:j + pad + 1]
