@@ -8,7 +8,7 @@ from openeo.udf import inspect
 from openeo.metadata import CubeMetadata
 
 # Add the onnx dependencies to the path
-sys.path.insert(1, "onnx_deps")
+sys.path.append("onnx_deps")
 import onnxruntime as ort
 
 

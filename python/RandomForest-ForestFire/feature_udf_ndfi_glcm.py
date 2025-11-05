@@ -1,6 +1,13 @@
+# /// script
+# dependencies = [
+#   "scikit-image",
+# ]
+# ///
+
+import sys
 import xarray
 import numpy as np
-from skimage.feature import graycomatrix, graycoprops
+from openeo.udf import inspect
 from openeo.metadata import CollectionMetadata
 
 
@@ -9,7 +16,6 @@ def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMet
         dimension = "bands",
         target = ["contrast","variance","NDFI"]
     )
-
 
 def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     """
@@ -61,15 +67,16 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     contrast = np.zeros(shape)
     variance = np.zeros(shape)
     
+    from skimage import feature # dependency install feature doesn't work on apply_metadata yet
     for i in range(pad, pad + shape[0]):
         for j in range(pad, pad + shape[1]):
             window = padded[i - pad:i + pad + 1, j - pad:j + pad + 1]
             
             # Compute GLCM
-            glcm = graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)
+            glcm = feature.graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)
             
             # Texture features
-            contrast[i - pad, j - pad] = graycoprops(glcm, 'contrast')[0, 0]
+            contrast[i - pad, j - pad] = feature.graycoprops(glcm, 'contrast')[0, 0]
             variance[i - pad, j - pad] = np.var(window)
 
     all_texture = np.stack([contrast,variance,ndfi])

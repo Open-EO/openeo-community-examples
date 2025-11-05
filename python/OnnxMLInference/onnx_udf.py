@@ -1,12 +1,14 @@
-import functools
 import sys
-import xarray as xr
+import functools
+from pathlib import Path
+
 import numpy as np
+import xarray as xr
 from openeo.udf.debug import inspect
 from openeo.metadata import CubeMetadata
 
 # The onnx_deps folder contains the extracted contents of the dependencies archive provided in the job options
-sys.path.insert(0, "onnx_deps") 
+sys.path.append("onnx_deps")
 import onnxruntime as ort
 
 def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
@@ -47,6 +49,10 @@ def _apply_model(input_xr: xr.DataArray) -> xr.DataArray:
     """
     # Load the ONNX model
     ort_session = _load_ort_session("test_model.onnx") # name of the model in the archive
+
+    # If there is still a 't' dimension, squeeze it, the _apply model works per time slice 
+    if 't' in input_xr.dims:
+        input_xr = input_xr.squeeze('t')  # remove time dimension
 
     # Make sure the input dimensions are in the expected order and save the original shape
     input_xr = input_xr.transpose("bands", "y", "x")

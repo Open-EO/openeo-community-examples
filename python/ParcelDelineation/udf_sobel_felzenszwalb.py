@@ -1,10 +1,16 @@
+# /// script
+# dependencies = [
+#   "scikit-image",
+# ]
+# ///
+
+import sys
 from xarray import DataArray
-from skimage import segmentation, graph
-from skimage.filters import sobel
 from typing import Dict
 from openeo.udf import inspect
 from openeo.metadata import CubeMetadata
-
+from skimage import segmentation, graph
+from skimage.filters import sobel
 
 def apply_datacube(cube: DataArray, context: Dict) -> DataArray:
     inspect(message=f"Dimensions of the final datacube {cube.dims}")
