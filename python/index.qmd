@@ -1,0 +1,7 @@
+---
+title: "OpenEO Community Examples"
+---
+
+Welcome to the OpenEO community notebook examples! This collection of notebooks is designed to help you get started with using OpenEO for Earth observation data processing. Whether you're new to OpenEO or looking for inspiration on how to use it in your projects, you'll find a variety of examples here.
+
+Browse the sidebar for Python examples.

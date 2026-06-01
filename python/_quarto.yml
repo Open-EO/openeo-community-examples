@@ -1,0 +1,24 @@
+# _quarto.yml
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "OpenEO Community Examples"
+  navbar:
+    left:
+      - href: index.qmd
+        text: openEO Community Examples
+      - href: https://openeo.org
+  sidebar:
+    contents: auto  
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-fold: true
+    code-tools: true
+
+execute:
+  freeze: true   
