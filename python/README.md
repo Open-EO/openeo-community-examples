@@ -40,7 +40,7 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 | [Forest Fire Mapping Using Random Forest](./RandomForest-ForestFire/)               | `Jupyter`   | A usecase of using Random Forest from openEO for Forest Fire Mapping¶ | openEO processes `MlModel`, `compute_and_rescale_indices`, `array_create`, `array_concat`, `array_interpolate_linear`, `GLCM`,`NBR`,`BAI`,`NDFI`; **plotting** predicted forest fire mapping ; `SENTINEL2_L2A`, `SENTINEL1_GRD`|
 | [BioPAR openEO Service](./BioPAR/)                           | `Jupyter`   | Demonstrates how to use the BioPAR openEO service to compute biophysical parameters such as FAPAR for a specified area and time period.                                                                                                                                                                                               | Using a User-Defined Process (UDP) via openEO; openEO processes `datacube_from_process`|
 | [openEO CORSA processes](./Corsa/)                           | `Jupyter`   | Demonstrate how to use CORSA processes in openEO                                                                                                                                                                                               | openEO processes `corsa_compress`, `corsa_decompress`|
-
+| [Hillshade](./Hillshade/)                                    | `Jupyter`   | Terrain hillshade visualisation from the Copernicus 30 m DEM using the Lambert illumination model                                                                                                                                              | openEO processes `slope`, `aspect`, `apply`, `reduce_dimension`; `COPERNICUS_30`|
 
 ## Contributing
 
