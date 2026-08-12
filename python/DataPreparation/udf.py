@@ -48,14 +48,6 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     b08 = cube.sel(bands="B08")
     b12 = cube.sel(bands="B12")
 
-    if b08.ndim != 2 or b12.ndim != 2:
-        raise ValueError(
-            f"Expected 2D band slices after selection, got B08 dims={b08.dims}, shape={b08.shape}; "
-            f"B12 dims={b12.dims}, shape={b12.shape}"
-        )
-
-    y_dim, x_dim = b12.dims
-
     # Compute mean values
     avg_b08 = b08.mean()
     avg_b12 = b12.mean()
@@ -87,24 +79,12 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
             contrast[i - pad, j - pad] = feature.graycoprops(glcm, 'contrast')[0, 0]
             variance[i - pad, j - pad] = np.var(window)
 
-    all_texture = np.concatenate(
-        [
-            contrast[None, ...],
-            variance[None, ...],
-            np.asarray(ndfi)[None, ...],
-        ],
-        axis=0,
-    )
-
-    # Create a data cube with the calculated texture and index layers.
+    all_texture = np.stack([contrast,variance,ndfi])
+    # create a data cube with all the calculated properties
     textures = xarray.DataArray(
         data=all_texture,
-        dims=["bands", y_dim, x_dim],
-        coords={
-            "bands": ["contrast","variance","NDFI"],
-            y_dim: cube.coords[y_dim],
-            x_dim: cube.coords[x_dim],
-        },
+        dims=["bands", "y", "x"],
+        coords={"bands": ["contrast","variance","NDFI"], "y": cube.coords["y"], "x": cube.coords["x"]},
     )
 
     return textures
