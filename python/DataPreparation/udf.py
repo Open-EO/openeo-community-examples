@@ -1,0 +1,110 @@
+# /// script
+# dependencies = [
+#   "scikit-image",
+# ]
+# ///
+
+import sys
+import xarray
+import numpy as np
+from openeo.udf import inspect
+from openeo.metadata import CollectionMetadata
+
+
+def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
+    return metadata.rename_labels(
+        dimension = "bands",
+        target = ["contrast","variance","NDFI"]
+    )
+
+def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
+    """
+    Applies spatial texture analysis and spectral index computation to a Sentinel-2 data cube.
+
+    Computes:
+    - NDFI (Normalized Difference Fraction Index) from bands B08 and B12
+    - Texture features (contrast and variance) using Gray-Level Co-occurrence Matrix (GLCM)
+
+    Args:
+        cube (xarray.DataArray): A 3D data cube with dimensions (bands, y, x) containing at least bands B08 and B12.
+        context (dict): A context dictionary (currently unused, included for API compatibility).
+
+    Returns:
+        xarray.DataArray: A new data cube with dimensions (bands, y, x) containing:
+                          - 'contrast': GLCM contrast
+                          - 'variance': GLCM variance
+                          - 'NDFI': Normalised Difference Fire Index
+    """
+    
+    # Parameters
+    window_size = context.get("padding_window_size", 33)  # Default to 33 if not provided
+    pad = window_size // 2
+    levels = 256  # For 8-bit images
+    
+    # Load Data
+    # data = cube.values # shape: (t, bands, y, x)
+    
+    # First get NDFI from the temporally reduced cube.
+    b08 = cube.sel(bands="B08")
+    b12 = cube.sel(bands="B12")
+
+    if b08.ndim != 2 or b12.ndim != 2:
+        raise ValueError(
+            f"Expected 2D band slices after selection, got B08 dims={b08.dims}, shape={b08.shape}; "
+            f"B12 dims={b12.dims}, shape={b12.shape}"
+        )
+
+    y_dim, x_dim = b12.dims
+
+    # Compute mean values
+    avg_b08 = b08.mean()
+    avg_b12 = b12.mean()
+
+    # Calculate NDFI
+    ndfi = ((b12 / avg_b12) - (b08 / avg_b08)) / (b08 / avg_b08)
+    
+    # Padding the image to handle border pixels for GLCM
+    padded = np.pad(b12, pad_width=pad, mode='reflect')
+
+    # Normalize to 0–255 range
+    img_norm = (padded - padded.min()) / (padded.max() - padded.min())
+    padded = (img_norm * 255).astype(np.uint8)
+    
+    # Initialize feature maps
+    shape = b12.shape
+    contrast = np.zeros(shape)
+    variance = np.zeros(shape)
+    
+    from skimage import feature # dependency install feature doesn't work on apply_metadata yet
+    for i in range(pad, pad + shape[0]):
+        for j in range(pad, pad + shape[1]):
+            window = padded[i - pad:i + pad + 1, j - pad:j + pad + 1]
+            
+            # Compute GLCM
+            glcm = feature.graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)
+            
+            # Texture features
+            contrast[i - pad, j - pad] = feature.graycoprops(glcm, 'contrast')[0, 0]
+            variance[i - pad, j - pad] = np.var(window)
+
+    all_texture = np.concatenate(
+        [
+            contrast[None, ...],
+            variance[None, ...],
+            np.asarray(ndfi)[None, ...],
+        ],
+        axis=0,
+    )
+
+    # Create a data cube with the calculated texture and index layers.
+    textures = xarray.DataArray(
+        data=all_texture,
+        dims=["bands", y_dim, x_dim],
+        coords={
+            "bands": ["contrast","variance","NDFI"],
+            y_dim: cube.coords[y_dim],
+            x_dim: cube.coords[x_dim],
+        },
+    )
+
+    return textures
