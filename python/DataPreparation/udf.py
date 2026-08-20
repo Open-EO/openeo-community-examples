@@ -56,10 +56,29 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     ndfi = ((b12 / avg_b12) - (b08 / avg_b08)) / (b08 / avg_b08)
     
     # Padding the image to handle border pixels for GLCM
-    padded = np.pad(b12, pad_width=pad, mode='reflect')
+    padded = np.pad(np.asarray(b12), pad_width=pad, mode='reflect')
 
-    # Normalize to 0–255 range
-    img_norm = (padded - padded.min()) / (padded.max() - padded.min())
+    # Cloud-masked pixels come through as NaN. Plain .min()/.max() are not
+    # NaN-aware, so a single NaN would poison the whole normalization and
+    # collapse the entire chunk to 0 (killing contrast/variance everywhere),
+    # so the range must be taken with nanmin/nanmax instead.
+    all_masked = np.isnan(padded).all()
+    if all_masked:  # entire chunk is masked, nothing to normalize against
+        pmin, pmax = 0.0, 0.0
+    else:
+        pmin, pmax = np.nanmin(padded), np.nanmax(padded)
+
+        # Individual NaN pixels still need a real value before quantizing to
+        # uint8 (NaN casts to 0/black), otherwise they'd read as fake sharp
+        # edges in any GLCM window that touches them. Fill with the chunk mean.
+        if np.isnan(padded).any():
+            padded = np.where(np.isnan(padded), np.nanmean(padded), padded)
+
+    # Normalize to 0–255 range, guarding against a flat/degenerate chunk
+    if pmax > pmin:
+        img_norm = (padded - pmin) / (pmax - pmin)
+    else:
+        img_norm = np.zeros_like(padded)
     padded = (img_norm * 255).astype(np.uint8)
     
     # Initialize feature maps
