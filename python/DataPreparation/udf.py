@@ -40,10 +40,7 @@ def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
     window_size = context.get("padding_window_size", 33)  # Default to 33 if not provided
     pad = window_size // 2
     levels = 256  # For 8-bit images
-    
-    # Load Data
-    # data = cube.values # shape: (t, bands, y, x)
-    
+        
     # First get NDFI from the temporally reduced cube.
     b08 = cube.sel(bands="B08")
     b12 = cube.sel(bands="B12")
