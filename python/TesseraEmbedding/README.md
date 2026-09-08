@@ -6,16 +6,7 @@ AOI/year, directly from openEO. TESSERA embeddings are usually only available as
 TESSERA v2 "student" encoder (vendored PyTorch code) inside an openEO UDF, so it works for any
 area and any year, not just the tiles Cambridge has already published.
 
-## What this demonstrates
 
-- `merge_cubes` with mismatched dimension labels: Sentinel-2 and the two Sentinel-1 orbits
-  (ascending/descending) are loaded as separate cubes with different acquisition dates, then
-  merged into one cube whose `t` dimension is the union of all three sources.
-- `apply_dimension` collapsing a `t` (time) dimension into a `bands` dimension of a different
-  size - the UDF here turns a variable-length time series into a fixed 128-band embedding.
-- Running a real PyTorch model in a UDF via the `udf-dependency-archives` job option, including
-  downloading model weights from a URL at runtime.
-- `SENTINEL2_L2A`, `SENTINEL1_GRD`.
 
 ## Requirements
 
@@ -51,14 +42,11 @@ archive (Python 3.11):
 
 
 The zip is extracted into a `feature_deps` folder next to the UDF; `udf_tessera_embedding.py` adds
-that folder to `sys.path` before importing `torch`. Check with your backend provider whether an
-equivalent archive is available and what folder name it uses (adjust the `sys.path.insert(...)`
-call in the UDF accordingly if it differs).
+that folder to `sys.path` before importing `torch`. 
 
-`udf_tessera_embedding.py` vendors the real `tessera_infer_v2/student/model.py` and `infer.py`
-source (model definition + bin-padding/inference helpers) verbatim, rather than a reimplementation
-- so it faithfully reproduces the real forward pass, including the QK-norm variant if a checkpoint
-uses it. At runtime the UDF downloads a `student_*.pt` checkpoint directly from a URL (passed via
+`udf_tessera_embedding.py` uses the real `tessera_infer_v2/student/model.py` and `infer.py`
+source (model definition + bin-padding/inference helpers) code, rather than a reimplementation
+so it faithfully reproduces the real forward pass. At runtime the UDF downloads a `student_*.pt` checkpoint directly from a URL (passed via
 `context={"weights_url": ...}`) and loads it with `torch.load`, so no local pre-processing step is
 needed - just point at any HTTPS-reachable checkpoint, e.g. a `resolve/main/...` URL from one of
 the `geotessera/TESSERA-V-2.0-2B-*` repos on the Hugging Face Hub.

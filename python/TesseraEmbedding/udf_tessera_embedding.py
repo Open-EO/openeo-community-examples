@@ -23,11 +23,14 @@ runtime from a URL passed via context, e.g.:
 
 Expects the merged input cube to contain (at least) these bands, produced by
 merge_cubes() of three separately-loaded collections (see TesseraEmbedding.ipynb):
-    S2:        B04, B02, B03, B08, B8A, B05, B06, B07, B11, B12, SCL
+    S2:        B04, B02, B03, B08, B8A, B05, B06, B07, B11, B12
     S1 asc:    VV_ASC, VH_ASC
     S1 desc:   VV_DESC, VH_DESC
-Because merge_cubes() unions the "t" dimension, a given band is NaN on dates
-that don't belong to its source - that's how we tell the three sources apart.
+Cloud masking happens outside this UDF: the S2 bands are expected to already
+have cloudy/shadowed/cirrus pixels set to no-data (NaN), e.g. via `.mask()`
+with an SCL-derived mask, before this UDF runs. Because merge_cubes() unions
+the "t" dimension, a given band is NaN on dates that don't belong to its
+source - that's how we tell the three sources apart.
 """
 import functools
 import io
@@ -42,12 +45,9 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import xarray as xr
 from openeo.metadata import CubeMetadata
 from openeo.udf import XarrayDataCube
-
-CLEAR_SCL_CLASSES = {4, 5, 6, 7, 11}  # vegetation, bare soil, water, unclassified, snow
 
 # =============================================================================
 # Vendored from tessera_infer_v2/student/model.py
@@ -107,64 +107,12 @@ class AttentionPooling(nn.Module):
         return (w * x).sum(dim=1)
 
 
-class QKNormEncoderLayer(nn.Module):
-    """Transformer encoder layer identical to `nn.TransformerEncoderLayer`
-    (post-LN, ReLU FFN, batch_first) EXCEPT it applies per-head RMSNorm to Q
-    and K before scaled-dot-product attention (QK-norm)."""
-
-    def __init__(self, d_model: int, nhead: int, dim_feedforward: int, dropout: float = 0.1) -> None:
-        super().__init__()
-        assert d_model % nhead == 0, f"d_model {d_model} % nhead {nhead} != 0"
-        self.nhead = nhead
-        self.head_dim = d_model // nhead
-        self.q_proj = nn.Linear(d_model, d_model)
-        self.k_proj = nn.Linear(d_model, d_model)
-        self.v_proj = nn.Linear(d_model, d_model)
-        self.out_proj = nn.Linear(d_model, d_model)
-        self.q_norm = nn.RMSNorm(self.head_dim)
-        self.k_norm = nn.RMSNorm(self.head_dim)
-        self.linear1 = nn.Linear(d_model, dim_feedforward)
-        self.linear2 = nn.Linear(dim_feedforward, d_model)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
-        self.dropout = nn.Dropout(dropout)
-        self.dropout1 = nn.Dropout(dropout)
-        self.dropout2 = nn.Dropout(dropout)
-        self._attn_p = float(dropout)
-
-    def _sa(self, x: torch.Tensor) -> torch.Tensor:
-        B, T, D = x.shape
-        H, hd = self.nhead, self.head_dim
-        q = self.q_proj(x).view(B, T, H, hd)
-        k = self.k_proj(x).view(B, T, H, hd)
-        v = self.v_proj(x).view(B, T, H, hd)
-        q = self.q_norm(q)
-        k = self.k_norm(k)
-        q = q.transpose(1, 2)
-        k = k.transpose(1, 2)
-        v = v.transpose(1, 2)
-        o = F.scaled_dot_product_attention(q, k, v, dropout_p=self._attn_p if self.training else 0.0)
-        o = o.transpose(1, 2).reshape(B, T, D)
-        return self.out_proj(o)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.norm1(x + self.dropout1(self._sa(x)))  # post-LN
-        x = self.norm2(x + self.dropout2(self.linear2(self.dropout(F.relu(self.linear1(x))))))
-        return x
-
-
 class TransformerEncoder(nn.Module):
-    """Per-pixel band embedding + DOY positional + Transformer + attention pooling.
-
-    `enable_qk_norm=False` (default): standard `nn.TransformerEncoderLayer`
-    (ReLU, no qk_norm). `True`: `QKNormEncoderLayer` stack (same structure +
-    per-head RMSNorm on Q/K).
-    """
+    """Per-pixel band embedding + DOY positional + Transformer + attention pooling."""
 
     def __init__(self, band_num: int, latent_dim: int, nhead: int = 4,
                  num_encoder_layers: int = 3, dim_feedforward: int = 1024,
-                 dropout: float = 0.1, max_seq_len: int = 256,
-                 enable_qk_norm: bool = False) -> None:
+                 dropout: float = 0.1, max_seq_len: int = 256) -> None:
         super().__init__()
         input_dim = band_num
         self.embedding = nn.Sequential(
@@ -174,19 +122,12 @@ class TransformerEncoder(nn.Module):
         )
         self.temporal_encoder = TemporalPositionalEncoder(d_model=latent_dim * 4)
 
-        self.enable_qk_norm = bool(enable_qk_norm)
-        if self.enable_qk_norm:
-            self.transformer_encoder = nn.ModuleList([
-                QKNormEncoderLayer(latent_dim * 4, nhead, dim_feedforward, dropout)
-                for _ in range(num_encoder_layers)
-            ])
-        else:
-            encoder_layer = nn.TransformerEncoderLayer(
-                d_model=latent_dim * 4, nhead=nhead,
-                dim_feedforward=dim_feedforward, dropout=dropout,
-                activation="relu", batch_first=True,
-            )
-            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=latent_dim * 4, nhead=nhead,
+            dim_feedforward=dim_feedforward, dropout=dropout,
+            activation="relu", batch_first=True,
+        )
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
         self.attn_pool = AttentionPooling(latent_dim * 4)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -196,11 +137,7 @@ class TransformerEncoder(nn.Module):
         bands_embedded = self.embedding(bands)
         temporal_encoding = self.temporal_encoder(doy)
         x = bands_embedded + temporal_encoding
-        if self.enable_qk_norm:
-            for layer in self.transformer_encoder:
-                x = layer(x)
-        else:
-            x = self.transformer_encoder(x)
+        x = self.transformer_encoder(x)
         return self.attn_pool(x)
 
 
@@ -225,11 +162,9 @@ class PixelStudent(nn.Module):
         dropout: float = 0.0,
         max_seq_len: int = 256,
         matryoshka_dims: Tuple[int, ...] = (16, 32, 64, 128),
-        enable_qk_norm: bool = False,
     ) -> None:
         super().__init__()
         self.repr_dim = int(repr_dim)
-        self.enable_qk_norm = bool(enable_qk_norm)
         self.matryoshka_dims = tuple(int(d) for d in matryoshka_dims)
         for d in self.matryoshka_dims:
             if d > repr_dim:
@@ -240,7 +175,7 @@ class PixelStudent(nn.Module):
                 band_num=band_num, latent_dim=latent_dim,
                 nhead=nhead, num_encoder_layers=num_layers,
                 dim_feedforward=dim_feedforward, dropout=dropout,
-                max_seq_len=max_seq_len, enable_qk_norm=enable_qk_norm,
+                max_seq_len=max_seq_len,
             )
 
         self.s2_backbone = make_enc(10)
@@ -288,7 +223,6 @@ def load_model(ckpt_source, device: torch.device = torch.device("cpu")):
         dropout=0.0,
         max_seq_len=int(cfg.get("max_seq_len", 256)),
         matryoshka_dims=matryoshka_dims,
-        enable_qk_norm=bool(cfg.get("enable_qk_norm", False)),
     ).to(device)
     model.load_state_dict(payload["model"])
     model.eval()
@@ -579,16 +513,20 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         valid = sub.notnull().any(dim=["bands", "y", "x"]).values
         idx = np.where(valid)[0]
         arr = sub.isel(t=idx).transpose("t", "y", "x", "bands").values.astype(np.float32)
-        return np.nan_to_num(arr), doy[idx]
+        return arr, doy[idx]
 
-    s2_bands, s2_doys = select(S2_BAND_ORDER)
-    scl, _ = select(["SCL"])
-    s2_masks = np.isin(scl[..., 0], list(CLEAR_SCL_CLASSES)).astype(np.float32)
+    # s2_bands_raw keeps its NaNs (from cloud masking done outside this UDF via
+    # .mask()) so we can derive a per-pixel/per-date clear-sky mask before filling.
+    s2_bands_raw, s2_doys = select(S2_BAND_ORDER)
+    s2_masks = (~np.isnan(s2_bands_raw).any(axis=-1)).astype(np.float32)
+    s2_bands = np.nan_to_num(s2_bands_raw)
 
     s1a_names = [f"{b}_ASC" for b in S1_BAND_ORDER]
     s1d_names = [f"{b}_DESC" for b in S1_BAND_ORDER]
     s1a_bands, s1a_doys = select(s1a_names)
+    s1a_bands = np.nan_to_num(s1a_bands)
     s1d_bands, s1d_doys = select(s1d_names)
+    s1d_bands = np.nan_to_num(s1d_bands)
 
     embedding = encode_tile(
         model, s2_bands, s2_doys, s2_masks=s2_masks,
