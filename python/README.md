@@ -42,6 +42,7 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 | [openEO CORSA processes](./Corsa/)                           | `Jupyter`   | Demonstrate how to use CORSA processes in openEO                                                                                                                                                                                               | openEO processes `corsa_compress`, `corsa_decompress`|
 | [Hillshade](./Hillshade/)                                    | `Jupyter`   | Terrain hillshade visualisation from the Copernicus 30 m DEM using the Lambert illumination model                                                                                                                                              | openEO processes `slope`, `aspect`, `apply`, `reduce_dimension`; `COPERNICUS_30`|
 | [NDDI](./NDDI/) | `Jupyter` | Summer Drought in Serbia using openEO |openEO processes `spectral_nidices.compute_indices`,`MultiResult`; `SENTINEL2_L2A`|
+| [Extracting ML-ready training Dataset](./ExtractingTrainingData/ML_ready_data_extraction.ipynb) | `Jupyter` | Simple workflow to extract Machine Learning ready training dataset |openEO processes `spectral_nidices.compute_indices`, `SENTINEL2_L2A`|
 
 ## Contributing
 
