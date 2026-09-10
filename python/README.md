@@ -45,11 +45,9 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 | [Access MODIS data in CDSE](./MODIS/MODIS_data_using_openEO.ipynb)                                    | `Jupyter`   | Access MODIS data using openEO                                                                                                                                              | openEO processes `load_stac`; `modis-aqua-myd11a2`|
 | [Analyse Carbon Dynamic](./MODIS/CarbonProduces.ipynb)                                    | `Jupyter`   | Exploring Carbon dynamics from MODIS product in CDSE                                                                                                                                         | openEO processes `load_stac`; `modis-aqua-myd13a1`(MODIS NDVI product), `modis-aqua-myd17a2h`(MODIS GPP product), `modis-aqua-myd15a2h`(MODIS LAI product)|
 | [Analyse Environmental Productivity](./MODIS/Environmental_productivity.ipynb)                                    | `Jupyter`   | Analyse vegetation productivity from MODIS Products                                                                                                                                              | openEO processes `load_stac`; `modis-aqua-myd13a1`(MODIS NDVI product), `modis-aqua-myd17a2h`(MODIS GPP product), `modis-aqua-myd11a2`(MODIS LST product)|
-
 [TesseraEmbedding](./TesseraEmbedding/)                       | `Jupyter`   | Computes [TESSERA v2](https://github.com/ucam-eo/tessera) pixel embeddings for a custom AOI/year by running the real PyTorch student encoder inside an openEO UDF.                                                            | openEO processes `merge_cubes`, `apply_dimension`, `run_udf` with external Python dependencies via `udf-dependency-archives`; `SENTINEL2_L2A`, `SENTINEL1_GRD`|
 
-                                                                                                       | openEO processes `corsa_compress`, `corsa_decompress`|
-| [TesseraEmbedding](./TesseraEmbedding/)                       | `Jupyter`   | Computes [TESSERA v2](https://github.com/ucam-eo/tessera) pixel embeddings for a custom AOI/year by running the real PyTorch student encoder inside an openEO UDF.                                                            | openEO processes `merge_cubes`, `apply_dimension`, `run_udf` with external Python dependencies via `udf-dependency-archives`; `SENTINEL2_L2A`, `SENTINEL1_GRD`|
+
 
 ## Contributing
 
