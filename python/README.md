@@ -47,6 +47,9 @@ The `Demonstrates` column summarizes the key openEO functionality used in each c
 
 [TesseraEmbedding](./TesseraEmbedding/)                       | `Jupyter`   | Computes [TESSERA v2](https://github.com/ucam-eo/tessera) pixel embeddings for a custom AOI/year by running the real PyTorch student encoder inside an openEO UDF.                                                            | openEO processes `merge_cubes`, `apply_dimension`, `run_udf` with external Python dependencies via `udf-dependency-archives`; `SENTINEL2_L2A`, `SENTINEL1_GRD`|
 
+                                                                                                       | openEO processes `corsa_compress`, `corsa_decompress`|
+| [TesseraEmbedding](./TesseraEmbedding/)                       | `Jupyter`   | Computes [TESSERA v2](https://github.com/ucam-eo/tessera) pixel embeddings for a custom AOI/year by running the real PyTorch student encoder inside an openEO UDF.                                                            | openEO processes `merge_cubes`, `apply_dimension`, `run_udf` with external Python dependencies via `udf-dependency-archives`; `SENTINEL2_L2A`, `SENTINEL1_GRD`|
+
 ## Contributing
 
 * Please provide each contribution in a separate folder.
