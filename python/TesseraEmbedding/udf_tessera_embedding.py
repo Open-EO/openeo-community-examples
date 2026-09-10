@@ -23,23 +23,29 @@ runtime from a URL passed via context, e.g.:
 
 Expects the merged input cube to contain (at least) these bands, produced by
 merge_cubes() of three separately-loaded collections (see TesseraEmbedding.ipynb):
-    S2:        B04, B02, B03, B08, B8A, B05, B06, B07, B11, B12
+    S2:        B04, B02, B03, B08, B8A, B05, B06, B07, B11, B12, SCL
     S1 asc:    VV_ASC, VH_ASC
     S1 desc:   VV_DESC, VH_DESC
-Cloud masking happens outside this UDF: the S2 bands are expected to already
-have cloudy/shadowed/cirrus pixels set to no-data (NaN), e.g. via `.mask()`
-with an SCL-derived mask, before this UDF runs. Because merge_cubes() unions
-the "t" dimension, a given band is NaN on dates that don't belong to its
-source - that's how we tell the three sources apart.
+Because merge_cubes() unions the "t" dimension, a given band's source can be
+all-NaN on dates that belong to another source. This UDF first prunes those
+source-mismatch dates per source, then applies SCL-based cloud masking on S2
+(SCL classes 7/8/9) so cloud NaNs don't interfere with source-date pruning.
 """
 import functools
 import io
 import math
+import os
 import sys
+import time
 import urllib.request
 from typing import Optional, Tuple
 
-sys.path.insert(0, "feature_deps")  # extracted torch_deps_python311.zip (job_options)
+# Torch is supplied via the "udf-dependency-archives" job option, which
+# extracts the archive to ./feature_deps. Guard so this file stays importable
+# in other contexts (tests, local runs) where that directory doesn't exist.
+_DEPS_DIR = os.environ.get("TESSERA_TORCH_DEPS_DIR", "feature_deps")
+if os.path.isdir(_DEPS_DIR):
+    sys.path.insert(0, _DEPS_DIR)
 
 import numpy as np
 import pandas as pd
@@ -48,6 +54,15 @@ import torch.nn as nn
 import xarray as xr
 from openeo.metadata import CubeMetadata
 from openeo.udf import XarrayDataCube
+
+# Keep per-worker CPU usage predictable inside the openEO sandbox.
+torch.set_num_threads(2)
+try:
+    torch.set_num_interop_threads(2)
+except RuntimeError:
+    # set_num_interop_threads must be called before any parallel work; if the
+    # module is re-imported in the same process it will raise. Safe to ignore.
+    pass
 
 # =============================================================================
 # Vendored from tessera_infer_v2/student/model.py
@@ -68,8 +83,12 @@ S1D_BAND_MEAN = np.array([5816.1382, 3277.7576], dtype=np.float32)
 S1D_BAND_STD = np.array([1554.6475, 1546.4733], dtype=np.float32)
 
 S2_BAND_ORDER = ["B04", "B02", "B03", "B08", "B8A", "B05", "B06", "B07", "B11", "B12"]
+S2_SCL_BAND = "SCL"
+# Matches TESSERA v2 training pipeline (tessera_preprocessing/s2_fast_processor.py::SCL_INVALID):
+# 0=NoData, 1=Saturated/Defective, 2=Dark area, 3=Cloud shadow, 8=Cloud medium, 9=Cloud high.
+# Classes 7 (Unclassified) and 10 (Thin cirrus) are kept as VALID at training time.
+S2_CLOUD_SCL_CLASSES = np.array([0, 1, 2, 3, 8, 9], dtype=np.int16)
 S1_BAND_ORDER = ["VV", "VH"]
-
 
 class TemporalPositionalEncoder(nn.Module):
     """Sinusoidal positional encoding using the (raw integer) DOY value."""
@@ -112,7 +131,7 @@ class TransformerEncoder(nn.Module):
 
     def __init__(self, band_num: int, latent_dim: int, nhead: int = 4,
                  num_encoder_layers: int = 3, dim_feedforward: int = 1024,
-                 dropout: float = 0.1, max_seq_len: int = 256) -> None:
+                 dropout: float = 0.1) -> None:
         super().__init__()
         input_dim = band_num
         self.embedding = nn.Sequential(
@@ -175,7 +194,6 @@ class PixelStudent(nn.Module):
                 band_num=band_num, latent_dim=latent_dim,
                 nhead=nhead, num_encoder_layers=num_layers,
                 dim_feedforward=dim_feedforward, dropout=dropout,
-                max_seq_len=max_seq_len,
             )
 
         self.s2_backbone = make_enc(10)
@@ -204,12 +222,14 @@ class PixelStudent(nn.Module):
         return self.encode(s2_x, s1_x)
 
 
-PixelStudentV11 = PixelStudent
-
-
 def load_model(ckpt_source, device: torch.device = torch.device("cpu")):
-    """Load a pretrained pixel student (encoder) from a .pt file path or file-like object."""
-    payload = torch.load(ckpt_source, map_location=device, weights_only=False)
+    """Load a pretrained pixel student (encoder) from a .pt file path or file-like object.
+
+    Uses ``weights_only=True`` so a malicious checkpoint cannot execute arbitrary
+    code via pickle. The TESSERA payload is ``{"args": {...}, "model": state_dict}``
+    which contains only safe types.
+    """
+    payload = torch.load(ckpt_source, map_location=device, weights_only=True)
     cfg = payload.get("args", {}) or {}
     matryoshka_dims = tuple(
         int(d) for d in str(cfg.get("matryoshka_dims", "16,32,64,128")).split(",")
@@ -221,7 +241,6 @@ def load_model(ckpt_source, device: torch.device = torch.device("cpu")):
         nhead=int(cfg.get("nhead", 4)),
         dim_feedforward=int(cfg.get("dim_feedforward", 1024)),
         dropout=0.0,
-        max_seq_len=int(cfg.get("max_seq_len", 256)),
         matryoshka_dims=matryoshka_dims,
     ).to(device)
     model.load_state_dict(payload["model"])
@@ -232,24 +251,14 @@ def load_model(ckpt_source, device: torch.device = torch.device("cpu")):
 # =============================================================================
 # Vendored from tessera_infer_v2/student/infer.py
 # =============================================================================
-BIN_EDGES = list(range(8, 257, 8))  # [8, 16, 24, ..., 256]
-
-
-def get_bin_size(n_obs: int) -> int:
-    if n_obs <= 0:
-        return 0
-    for b in BIN_EDGES:
-        if n_obs <= b:
-            return b
-    return BIN_EDGES[-1]
+BIN_EDGES = np.array(list(range(8, 257, 8)), dtype=np.int64)  # [8, 16, 24, ..., 256]
 
 
 def _vec_get_bin_size(n_obs: np.ndarray) -> np.ndarray:
-    out = np.full_like(n_obs, BIN_EDGES[-1])
-    out[n_obs <= 0] = 0
-    for b in reversed(BIN_EDGES):
-        out = np.where((n_obs > 0) & (n_obs <= b), b, out)
-    return out
+    """Vectorized: smallest bin edge >= n_obs, clamped to [0, max_edge]."""
+    idx = np.searchsorted(BIN_EDGES, n_obs, side="left")
+    idx = np.clip(idx, 0, len(BIN_EDGES) - 1)
+    return np.where(n_obs <= 0, 0, BIN_EDGES[idx])
 
 
 def _pad_pattern(n: int, B: int) -> np.ndarray:
@@ -299,6 +308,7 @@ def encode_pixels(
     batch_pixels: int = 1024,
     device: torch.device = torch.device("cpu"),
     standardize: bool = True,
+    context: Optional[dict] = None,
 ) -> np.ndarray:
     """Encode B independent pixels' time series into 128-d embeddings.
 
@@ -430,6 +440,7 @@ def encode_tile(
     batch_pixels: int = 1024,
     device: torch.device = torch.device("cpu"),
     standardize: bool = True,
+    context: Optional[dict] = None,
 ) -> np.ndarray:
     """Encode one tile into an (H, W, 128) embedding map.
 
@@ -444,35 +455,51 @@ def encode_tile(
     Returns: (H, W, 128) float32.
     """
     T_s2, H, W, _ = s2_bands.shape
-    N = H * W
-    s2_flat = s2_bands.transpose(1, 2, 0, 3).reshape(N, T_s2, 10)
-    s2_doys_flat = np.broadcast_to(s2_doys[None, :], (N, T_s2)).copy()
-    s2_masks_flat = (s2_masks.transpose(1, 2, 0).reshape(N, T_s2) if s2_masks is not None else None)
+    out = np.empty((H, W, model.repr_dim), dtype=np.float32)
 
-    if s1_asc_bands is not None and s1_asc_bands.size > 0:
-        Ta = s1_asc_bands.shape[0]
-        s1a_flat = s1_asc_bands.transpose(1, 2, 0, 3).reshape(N, Ta, 2)
-        s1a_doys_flat = np.broadcast_to(s1_asc_doys[None, :], (N, Ta)).copy()
-    else:
-        s1a_flat = None
-        s1a_doys_flat = None
+    # Spatial tiling: process rows in chunks so we never materialize the full
+    # (H*W, T, C) flat array (which is a copy because of transpose+reshape).
+    # ROW_CHUNK * W pixels per iteration keeps peak memory bounded regardless
+    # of the openEO chunk size passed in.
+    ROW_CHUNK = max(1, min(H, max(1, 16384 // max(W, 1))))
 
-    if s1_desc_bands is not None and s1_desc_bands.size > 0:
-        Td = s1_desc_bands.shape[0]
-        s1d_flat = s1_desc_bands.transpose(1, 2, 0, 3).reshape(N, Td, 2)
-        s1d_doys_flat = np.broadcast_to(s1_desc_doys[None, :], (N, Td)).copy()
-    else:
-        s1d_flat = None
-        s1d_doys_flat = None
+    for y0 in range(0, H, ROW_CHUNK):
+        y1 = min(H, y0 + ROW_CHUNK)
+        h = y1 - y0
+        N = h * W
 
-    out = encode_pixels(
-        model, s2_flat, s2_doys_flat,
-        s1_asc_bands=s1a_flat, s1_asc_doys=s1a_doys_flat,
-        s1_desc_bands=s1d_flat, s1_desc_doys=s1d_doys_flat,
-        s2_masks=s2_masks_flat,
-        batch_pixels=batch_pixels, device=device, standardize=standardize,
-    )
-    return out.reshape(H, W, model.repr_dim)
+        s2_flat = s2_bands[:, y0:y1, :, :].transpose(1, 2, 0, 3).reshape(N, T_s2, 10)
+        s2_masks_flat = (
+            s2_masks[:, y0:y1, :].transpose(1, 2, 0).reshape(N, T_s2)
+            if s2_masks is not None else None
+        )
+
+        if s1_asc_bands is not None and s1_asc_bands.size > 0:
+            Ta = s1_asc_bands.shape[0]
+            s1a_flat = s1_asc_bands[:, y0:y1, :, :].transpose(1, 2, 0, 3).reshape(N, Ta, 2)
+            s1a_doys_flat = np.broadcast_to(s1_asc_doys[None, :], (N, Ta))
+        else:
+            s1a_flat = None
+            s1a_doys_flat = None
+
+        if s1_desc_bands is not None and s1_desc_bands.size > 0:
+            Td = s1_desc_bands.shape[0]
+            s1d_flat = s1_desc_bands[:, y0:y1, :, :].transpose(1, 2, 0, 3).reshape(N, Td, 2)
+            s1d_doys_flat = np.broadcast_to(s1_desc_doys[None, :], (N, Td))
+        else:
+            s1d_flat = None
+            s1d_doys_flat = None
+
+        emb = encode_pixels(
+            model, s2_flat, s2_doys,
+            s1_asc_bands=s1a_flat, s1_asc_doys=s1a_doys_flat,
+            s1_desc_bands=s1d_flat, s1_desc_doys=s1d_doys_flat,
+            s2_masks=s2_masks_flat,
+            batch_pixels=batch_pixels, device=device, standardize=standardize,
+            context=context,
+        )
+        out[y0:y1] = emb.reshape(h, W, model.repr_dim)
+    return out
 
 
 # =============================================================================
@@ -480,8 +507,19 @@ def encode_tile(
 # =============================================================================
 @functools.lru_cache(maxsize=1)
 def _load_model_from_url(url: str):
-    with urllib.request.urlopen(url, timeout=120) as resp:
-        data = resp.read()
+    req = urllib.request.Request(url, headers={"User-Agent": "tessera-udf/1"})
+    last_err = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                data = resp.read()
+            break
+        except Exception as e:  # noqa: BLE001 - retry on any network error
+            last_err = e
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+    else:
+        raise RuntimeError(f"Failed to download weights from {url}: {last_err}")
     return load_model(io.BytesIO(data), device=torch.device("cpu"))
 
 
@@ -496,36 +534,73 @@ def _get_model(context: dict):
 
 
 def apply_metadata(metadata: CubeMetadata, context: dict) -> CubeMetadata:
+    # This UDF collapses the time dimension into 128 output bands, so it must
+    # be invoked via apply_dimension(dimension="t", target_dimension="bands")
+    # (see TesseraEmbedding.ipynb). The metadata rename below assumes t is
+    # already gone by the time the callback runs.
     model = _get_model(context)
     band_names = [f"tessera_{i}" for i in range(model.repr_dim)]
     return metadata.rename_labels(dimension="bands", target=band_names)
+
+
+def _tessera_doy_values(t_coord_values: np.ndarray) -> np.ndarray:
+    """Convert timestamps to TESSERA DOY values in [1, 365].
+
+    TESSERA was trained with calendar-day DOY. Leap day (366) is folded to 365
+    so leap and non-leap years stay on the same positional scale.
+    """
+    t_index = pd.DatetimeIndex(t_coord_values)
+    doy = t_index.dayofyear.to_numpy().astype(np.float32)
+    return np.minimum(doy, 365.0)
 
 
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     model = _get_model(context)
     da = cube.get_array()  # dims: t, bands, y, x
 
-    t_values = pd.DatetimeIndex(da.coords["t"].values)
-    doy = t_values.dayofyear.to_numpy().astype(np.float32)
+    available = set(da.coords["bands"].values.tolist())
+    required = (
+        set(S2_BAND_ORDER)
+        | {S2_SCL_BAND}
+        | {f"{b}_ASC" for b in S1_BAND_ORDER}
+        | {f"{b}_DESC" for b in S1_BAND_ORDER}
+    )
+    missing = required - available
+    if missing:
+        raise ValueError(
+            f"Input cube is missing required bands: {sorted(missing)}. "
+            f"Expected S2 bands {S2_BAND_ORDER} + SCL, S1 asc VV_ASC/VH_ASC, "
+            f"S1 desc VV_DESC/VH_DESC. Got: {sorted(available)}."
+        )
 
-    def select(band_names):
+    doy = _tessera_doy_values(da.coords["t"].values)
+
+    def select(band_names, label: str):
         sub = da.sel(bands=band_names)
         valid = sub.notnull().any(dim=["bands", "y", "x"]).values
         idx = np.where(valid)[0]
         arr = sub.isel(t=idx).transpose("t", "y", "x", "bands").values.astype(np.float32)
         return arr, doy[idx]
 
-    # s2_bands_raw keeps its NaNs (from cloud masking done outside this UDF via
-    # .mask()) so we can derive a per-pixel/per-date clear-sky mask before filling.
-    s2_bands_raw, s2_doys = select(S2_BAND_ORDER)
-    s2_masks = (~np.isnan(s2_bands_raw).any(axis=-1)).astype(np.float32)
-    s2_bands = np.nan_to_num(s2_bands_raw)
+    # 1) Prune merge-introduced NaN-only dates first by selecting S2-native dates.
+    # 2) Then apply cloud masking from SCL to create cloud NaNs.
+    s2_with_scl, s2_doys = select(S2_BAND_ORDER + [S2_SCL_BAND], "s2")
+    s2_bands_raw = s2_with_scl[:, :, :, :len(S2_BAND_ORDER)]
+    s2_scl = s2_with_scl[:, :, :, len(S2_BAND_ORDER)]
+    # Treat SCL NaN as "invalid" (nodata) rather than letting float->int16 UB
+    # decide. Class 0 is "no data" in SCL, but we also mark it invalid below.
+    scl_nan = np.isnan(s2_scl)
+    scl_int = np.where(scl_nan, 0, s2_scl).astype(np.int16)
+    cloudy = np.isin(scl_int, S2_CLOUD_SCL_CLASSES) | scl_nan
+    s2_bands_masked = np.where(cloudy[:, :, :, None], np.nan, s2_bands_raw)
+    s2_masks = ~np.isnan(s2_bands_masked).any(axis=-1)  # bool (T, H, W)
+    s2_bands = np.nan_to_num(s2_bands_masked)
 
     s1a_names = [f"{b}_ASC" for b in S1_BAND_ORDER]
     s1d_names = [f"{b}_DESC" for b in S1_BAND_ORDER]
-    s1a_bands, s1a_doys = select(s1a_names)
+    s1a_bands, s1a_doys = select(s1a_names, "s1_asc")
+    s1d_bands, s1d_doys = select(s1d_names, "s1_desc")
     s1a_bands = np.nan_to_num(s1a_bands)
-    s1d_bands, s1d_doys = select(s1d_names)
     s1d_bands = np.nan_to_num(s1d_bands)
 
     embedding = encode_tile(
@@ -533,6 +608,7 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
         s1_asc_bands=s1a_bands, s1_asc_doys=s1a_doys,
         s1_desc_bands=s1d_bands, s1_desc_doys=s1d_doys,
         device=torch.device("cpu"),
+        context=context,
     )  # (H, W, repr_dim)
 
     result = xr.DataArray(

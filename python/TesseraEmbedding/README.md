@@ -23,15 +23,13 @@ SENTINEL1_GRD, orbit=ASCENDING  (VV_ASC, VH_ASC)              ├─ merge_cubes
 SENTINEL1_GRD, orbit=DESCENDING (VV_DESC, VH_DESC)           ─┘                 target_dimension="bands", process=UDF)
                                                                                           │
                                                                                           ▼
-                                                                          128-band TESSERA v2 embedding cube
+                                                               prune source-mismatch NaN dates, then SCL cloud mask, then encode
 ```
 
-`merge_cubes` is used here for its "union of labels" behaviour: S2 and the two S1 orbits have
-different acquisition dates, so the merged cube's `t` dimension is the union of all three, with
-`NaN` wherever a given band's source has no observation on that date. The UDF splits everything
-back apart by band name + non-`NaN` dates, reconstructing the exact `(T, H, W, C)` + DOY + mask
-arrays that `encode_tile()` expects, then runs the TESSERA student forward pass and collapses `t`
-into a `bands` dimension of size 128.
+`merge_cubes` creates a union timeline, so some source bands are `NaN` on dates that belong to
+other sources. In this example, the UDF first prunes those source-mismatch dates separately for S2,
+S1 ascending, and S1 descending, then applies SCL-based cloud masking on S2. This ordering avoids
+cloud-mask NaNs interfering with source-date pruning.
 
 ## Running PyTorch in the UDF sandbox
 
