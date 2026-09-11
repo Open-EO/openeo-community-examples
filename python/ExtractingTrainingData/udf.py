@@ -1,0 +1,106 @@
+# /// script
+# dependencies = [
+#   "scikit-image",
+# ]
+# ///
+
+import sys
+import xarray
+import numpy as np
+from openeo.udf import inspect
+from openeo.metadata import CollectionMetadata
+
+
+def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
+    return metadata.rename_labels(
+        dimension = "bands",
+        target = ["contrast","variance","NDFI"]
+    )
+
+def apply_datacube(cube: xarray.DataArray, context: dict) -> xarray.DataArray:
+    """
+    Applies spatial texture analysis and spectral index computation to a Sentinel-2 data cube.
+
+    Computes:
+    - NDFI (Normalized Difference Fraction Index) from bands B08 and B12
+    - Texture features (contrast and variance) using Gray-Level Co-occurrence Matrix (GLCM)
+
+    Args:
+        cube (xarray.DataArray): A 3D data cube with dimensions (bands, y, x) containing at least bands B08 and B12.
+        context (dict): A context dictionary (currently unused, included for API compatibility).
+
+    Returns:
+        xarray.DataArray: A new data cube with dimensions (bands, y, x) containing:
+                          - 'contrast': GLCM contrast
+                          - 'variance': GLCM variance
+                          - 'NDFI': Normalised Difference Fire Index
+    """
+    
+    # Parameters
+    window_size = context.get("padding_window_size", 33)  # Default to 33 if not provided
+    pad = window_size // 2
+    levels = 256  # For 8-bit images
+        
+    # First get NDFI from the temporally reduced cube.
+    b08 = cube.sel(bands="B08")
+    b12 = cube.sel(bands="B12")
+
+    # Compute mean values
+    avg_b08 = b08.mean()
+    avg_b12 = b12.mean()
+
+    # Calculate NDFI
+    ndfi = ((b12 / avg_b12) - (b08 / avg_b08)) / (b08 / avg_b08)
+    
+    # Padding the image to handle border pixels for GLCM
+    padded = np.pad(np.asarray(b12), pad_width=pad, mode='reflect')
+
+    # Cloud-masked pixels come through as NaN. Plain .min()/.max() are not
+    # NaN-aware, so a single NaN would poison the whole normalization and
+    # collapse the entire chunk to 0 (killing contrast/variance everywhere),
+    # so the range must be taken with nanmin/nanmax instead.
+    all_masked = np.isnan(padded).all()
+    if all_masked:  # entire chunk is masked, nothing to normalize against
+        pmin, pmax = 0.0, 0.0
+    else:
+        pmin, pmax = np.nanmin(padded), np.nanmax(padded)
+
+        # Individual NaN pixels still need a real value before quantizing to
+        # uint8 (NaN casts to 0/black), otherwise they'd read as fake sharp
+        # edges in any GLCM window that touches them. Fill with the chunk mean.
+        if np.isnan(padded).any():
+            padded = np.where(np.isnan(padded), np.nanmean(padded), padded)
+
+    # Normalize to 0–255 range, guarding against a flat/degenerate chunk
+    if pmax > pmin:
+        img_norm = (padded - pmin) / (pmax - pmin)
+    else:
+        img_norm = np.zeros_like(padded)
+    padded = (img_norm * 255).astype(np.uint8)
+    
+    # Initialize feature maps
+    shape = b12.shape
+    contrast = np.zeros(shape)
+    variance = np.zeros(shape)
+    
+    from skimage import feature # dependency install feature doesn't work on apply_metadata yet
+    for i in range(pad, pad + shape[0]):
+        for j in range(pad, pad + shape[1]):
+            window = padded[i - pad:i + pad + 1, j - pad:j + pad + 1]
+            
+            # Compute GLCM
+            glcm = feature.graycomatrix(window, distances=[5], angles=[0], levels=levels, symmetric=True, normed=True)
+            
+            # Texture features
+            contrast[i - pad, j - pad] = feature.graycoprops(glcm, 'contrast')[0, 0]
+            variance[i - pad, j - pad] = np.var(window)
+
+    all_texture = np.stack([contrast,variance,ndfi])
+    # create a data cube with all the calculated properties
+    textures = xarray.DataArray(
+        data=all_texture,
+        dims=["bands", "y", "x"],
+        coords={"bands": ["contrast","variance","NDFI"], "y": cube.coords["y"], "x": cube.coords["x"]},
+    )
+
+    return textures
