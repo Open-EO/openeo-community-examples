@@ -1,8 +1,17 @@
 # 20 · Data Discovery
 
-Notebooks that show **how to find and load a ready-made product** into an openEO datacube. If you want to *derive* a new product from raw inputs, look in [30_openeo-processing](../30_openeo-processing/) instead.
+This section is about finding and loading ready-made datasets into an openEO datacube. It is the place to start when you want to work with an existing product rather than derive a new one from raw inputs.
 
-Each subfolder is named after the product it accesses. The one exception is [`access-stac-catalogs/`](./access-stac-catalogs/), which groups notebooks about the general `load_stac` mechanism rather than a specific product.
+If you want to create a custom product by masking, merging, compositing, or deriving new bands, use [30 · openEO Processing](../30_openeo-processing/README.md) instead.
+
+Each subfolder is named after the product it accesses, with the exception of [access-stac-catalogs](./access-stac-catalogs/), which groups workflows that use the general `load_stac` mechanism.
+
+## What this section covers
+
+- discovery of available collections and STAC-backed products
+- loading product data into an openEO datacube
+- combining external datasets with Sentinel-based workflows
+- working with product-specific use cases such as flood mapping, biomass, and land-cover products
 
 ## Notebooks
 
@@ -18,3 +27,12 @@ Each subfolder is named after the product it accesses. The one exception is [`ac
 | [access-stac-catalogs/load-stac-item.ipynb](./access-stac-catalogs/load-stac-item.ipynb) | Custom GeoTIFF via STAC | `load_stac` | Build a STAC item for your own file and load it. |
 | [access-stac-catalogs/load-biomass-stac.ipynb](./access-stac-catalogs/load-biomass-stac.ipynb) | External biomass STAC | `load_stac`, `merge_cubes` | Combine an external biomass dataset with Sentinel-2. |
 | [access-stac-catalogs/load-landsat-stac.ipynb](./access-stac-catalogs/load-landsat-stac.ipynb) | Landsat 8 STAC | `load_stac` | Access Landsat 8 through a STAC catalogue. |
+
+## Typical workflow
+
+1. find a suitable collection or external STAC catalogue
+2. load the product into an openEO datacube
+3. combine it with other datasets if needed
+4. continue with analysis, masking, reduction, or downstream ML tasks
+
+This section is best for users who want to work with existing EO products without building their own processing pipeline from scratch.

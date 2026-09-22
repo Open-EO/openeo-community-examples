@@ -1,6 +1,13 @@
 # 40 · Machine Learning
 
-Train or apply ML models on Earth observation data through openEO. Feature engineering, training, and inference all run on the backend via UDFs and (optionally) UDPs — no local downloads required.
+This section shows how to train and apply machine learning models in openEO workflows. The focus is on feature engineering, backend-side inference, and reusable model deployment patterns using UDFs and UDPs.
+
+## What this section covers
+
+- training ML models on EO data without moving everything locally
+- building task-specific feature cubes from Sentinel imagery and ancillary data
+- deploying models with ONNX or UDP-based inference patterns
+- reusing trained models for large-scale prediction jobs
 
 ## Notebooks
 
@@ -12,4 +19,17 @@ Train or apply ML models on Earth observation data through openEO. Feature engin
 | [random-forest-forest-fire/random-forest-training.ipynb](./random-forest-forest-fire/random-forest-training.ipynb) | Sentinel-2 + SAR | GLCM UDFs, RF training, model persistence | Full training workflow for a forest-fire Random Forest model. |
 | [random-forest-forest-fire/random-forest-inference-udp.ipynb](./random-forest-forest-fire/random-forest-inference-udp.ipynb) | Sentinel-2 + SAR | UDP creation, model reuse | Wrap the trained model as a shareable UDP for scalable inference. |
 
-See [`random-forest-forest-fire/README.md`](./random-forest-forest-fire/README.md), [`dynamic-land-cover-mapping/README.md`](./dynamic-land-cover-mapping/README.md), and [`parcel-delineation/README.md`](./parcel-delineation/README.md) for extra background on those notebooks.
+## Typical workflow
+
+1. build or select a feature cube from EO data
+2. train a model, or load a pretrained one
+3. run inference with a UDF, ONNX session, or UDP
+4. deploy the model for reuse across multiple areas or time periods
+
+Additional background is available in:
+
+- [random-forest-forest-fire/README.md](./random-forest-forest-fire/README.md)
+- [dynamic-land-cover-mapping/README.md](./dynamic-land-cover-mapping/README.md)
+- [parcel-delineation/README.md](./parcel-delineation/README.md)
+
+This section is a good fit when you want to move from exploratory processing to actual predictive workflows in openEO.

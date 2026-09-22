@@ -1,8 +1,16 @@
 # 30 · openEO Processing
 
-Notebooks that show **how to build a datacube pipeline in openEO**: masking, merging, compositing, terrain, gap-filling, deriving new products, and wrapping reusable logic as a UDP.
+This section moves beyond loading datasets and focuses on building actual processing pipelines in openEO: masking, merging, compositing, terrain processing, gap-filling, and creating reusable process logic.
 
-If you just want to *load* an existing product, look in [20_data-discovery](../20_data-discovery/) instead.
+If you want to access an existing product rather than derive a new one, start with [20 · Data Discovery](../20_data-discovery/README.md).
+
+## What this section covers
+
+- combining multiple time series into a single datacube
+- deriving new products with masks and spatial operators
+- temporal compositing and rank-based aggregation
+- building reusable logic as a UDP
+- applying UDFs for custom spatial or temporal processing
 
 ## Notebooks
 
@@ -16,3 +24,13 @@ If you just want to *load* an existing product, look in [20_data-discovery](../2
 | [sentinel1-stats/sentinel1-stats.ipynb](./sentinel1-stats/sentinel1-stats.ipynb) | Sentinel-1 GRD | `apply_dimension`, UDP publishing | Aggregate SAR statistics and publish them as a UDP. |
 | [statistical-data-fill/statistical-data-fill.ipynb](./statistical-data-fill/statistical-data-fill.ipynb) | Sentinel-2 L2A | UDF (Lowess), cloud masking | Fill time-series gaps with Lowess smoothing in a UDF. |
 | [biopar/biopar-service.ipynb](./biopar/biopar-service.ipynb) | Sentinel-2 L2A | UDP execution | Derive biophysical parameters (LAI, FAPAR, FCOVER, …) via the BioPAR UDP. |
+
+## Typical workflow
+
+1. load the relevant collections
+2. apply masking or quality filtering
+3. merge, reduce, or aggregate over time and space
+4. derive a new product or wrap logic as a reusable UDP
+5. save or export the result for analysis or downstream modeling
+
+This section is best for users who want to turn raw EO data into richer, custom products inside openEO.
