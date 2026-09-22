@@ -43,6 +43,9 @@ PATCH_TOKEN = 16   # 224 / 14 tokens per side; also the output/input step ratio
 TOKENS_PER_SIDE = PATCH // PATCH_TOKEN   # 14
 EMB_DIM = 768
 
+DEFAULT_ONNX_DIR = "terramind_onnx"
+DEFAULT_ONNX_PATH = "terramind_v1_base_onnx/terramind_v1_base_encoder.onnx"
+
 
 @functools.lru_cache(maxsize=2)
 def _load_session(onnx_path: str) -> ort.InferenceSession:
@@ -96,8 +99,8 @@ def _encode_tile(sess: ort.InferenceSession,
 
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     context = context or {}
-    onnx_dir = context.get("onnx_dir", "terramind_onnx")
-    onnx_filename = context.get("onnx_filename", "terramind_v1_base_onnx\terramind_v1_base_encoder.onnx")
+    onnx_dir = context.get("onnx_dir", DEFAULT_ONNX_DIR)
+    onnx_filename = context.get("onnx_filename", DEFAULT_ONNX_PATH)
     onnx_path = (Path(onnx_dir) / onnx_filename).as_posix()
 
     arr = cube.get_array()   # (bands, y, x) or (t, bands, y, x)
