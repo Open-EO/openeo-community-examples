@@ -18,6 +18,7 @@ Each subfolder is named after the product it accesses, with the exception of [ac
 | Notebook | Data source | Key openEO features | Description |
 |---|---|---|---|
 | [proba-v/proba-v.ipynb](./proba-v/proba-v.ipynb) | PROBA-V NDVI (Terrascope via federation) | `load_collection`, federation | Federated access to PROBA-V NDVI. |
+| [sentinel5p/Access_&_Analyse_Sentinel5P_Products.ipynb](./sentinel5p/Access_&_Analyse_Sentinel5P_Products.ipynb) | Sentinel-5P Aerosol Index and atmospheric composition products | `load_collection`, catalogue discovery | Beginner-friendly introduction to finding and analysing Sentinel-5P products in CDSE. |
 | [modis/modis-data-using-openeo.ipynb](./modis/modis-data-using-openeo.ipynb) | MODIS (CDSE STAC) | catalogue browsing, `load_collection` | Explore MODIS collections available in CDSE. |
 | [modis/carbon-dynamics.ipynb](./modis/carbon-dynamics.ipynb) | MODIS NDVI / GPP / LAI | `load_collection`, temporal aggregation | Carbon dynamics time series over Antwerp. |
 | [modis/environmental-productivity.ipynb](./modis/environmental-productivity.ipynb) | MODIS NDVI / GPP / LAI | `load_collection`, correlation | Environmental productivity analysis. |

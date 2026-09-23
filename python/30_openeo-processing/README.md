@@ -17,6 +17,8 @@ If you want to access an existing product rather than derive a new one, start wi
 | Notebook | Data source | Key openEO features | Description |
 |---|---|---|---|
 | [basic-sentinel-merge/sentinel-merge.ipynb](./basic-sentinel-merge/sentinel-merge.ipynb) | Sentinel-1 + Sentinel-2 | `merge_cubes`, temporal interpolation | Merge S1 and S2 time series into one datacube. |
+| [sar-in-openeo-with-cwl/Coherence_for_harvestdays.ipynb](./sar-in-openeo-with-cwl/Coherence_for_harvestdays.ipynb) | Sentinel-1 SAR | interferometric coherence, temporal analysis | Analyse coherence for harvest-day detection. |
+| [sar-in-openeo-with-cwl/Interferogram_deformation_map.ipynb](./sar-in-openeo-with-cwl/Interferogram_deformation_map.ipynb) | Sentinel-1 SAR | `sentinel1_sar_interferogram`, deformation mapping | Generate interferograms and estimate earthquake-induced surface deformation. |
 | [hillshade/hillshade.ipynb](./hillshade/hillshade.ipynb) | Copernicus 30 m DEM | `apply`, `slope`, `aspect`, trigonometry | Compute a Lambert-model hillshade from a DEM. |
 | [rank-composites/bap-composite.ipynb](./rank-composites/bap-composite.ipynb) | Sentinel-2 L2A | scoring, masking, temporal aggregation | Best-Available-Pixel monthly composite. |
 | [rank-composites/rank-composites.ipynb](./rank-composites/rank-composites.ipynb) | Sentinel-2 L2A | `aggregate_temporal`, `apply_neighborhood` | Gap-free max-NDVI rank composite. |
