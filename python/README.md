@@ -23,15 +23,4 @@ Each numbered folder groups notebooks by what the user is trying to *do*, not by
 - If it wraps a full **applied use case** (data + processing + interpretation), it belongs in **`50_thematic-notebooks`**.
 - ML training/inference workflows belong in **`40_machine-learning`** even if they also touch discovery or processing.
 
-## Naming convention
 
-- Folders and `.ipynb` files: `kebab-case` (lower-case, dash-separated).
-- Numbered top-level sections in steps of 10 to leave room for future additions.
-- Python module files (`.py`) stay `snake_case` (Python import requirement).
-- Data files (`.geojson`, `.nc`, `.png`, …) keep their original names.
-
-## Contributing
-
-- Add one folder per contribution under the section that matches your intent (see the classification rule above).
-- Keep folder and notebook names in `kebab-case`.
-- Add a short entry to the section README describing what your notebook does and which openEO features it demonstrates.
