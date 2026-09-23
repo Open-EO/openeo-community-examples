@@ -34,3 +34,14 @@ If you want to access an existing product rather than derive a new one, start wi
 5. save or export the result for analysis or downstream modeling
 
 This section is best for users who want to turn raw EO data into richer, custom products inside openEO.
+
+## Suggested next steps
+
+A good learning path is:
+
+
+3. [40 · Machine Learning](../40_machine-learning/README.md) if you want to train or run ML models on top of the data.
+4. [50 · Thematic Notebooks](../50_thematic-notebooks/README.md) or [60 · Geospatial Embeddings](../60_geospatial-embeddings/README.md) if you want domain-specific workflows or learned feature spaces.
+5. [70 · Platform and Large Scale](../70_platform-and-large-scale/README.md) if you want to scale up processing, batch orchestration, and platform-level workflows.
+
+The right next step depends on whether you want to go from custom product engineering to ML, feature embedding, or large-scale execution.

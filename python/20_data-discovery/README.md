@@ -36,3 +36,13 @@ Each subfolder is named after the product it accesses, with the exception of [ac
 4. continue with analysis, masking, reduction, or downstream ML tasks
 
 This section is best for users who want to work with existing EO products without building their own processing pipeline from scratch.
+
+
+## Suggested next steps
+
+A good learning path is:
+
+1. [30 · openEO Processing](../30_openeo-processing/README.md) if you want to build custom processing pipelines, masks, composites, and derived products.
+2. [40 · Machine Learning](../40_machine-learning/README.md) if you want to train or run ML models on top of the data.
+3. [50 · Thematic Notebooks](../50_thematic-notebooks/README.md) or [60 · Geospatial Embeddings](../60_geospatial-embeddings/README.md) if you want domain-specific workflows or learned feature spaces.
+4. [70 · Platform and Large Scale](../70_platform-and-large-scale/README.md) if you want to scale up processing, batch orchestration, and platform-level workflows.

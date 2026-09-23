@@ -33,3 +33,13 @@ Additional background is available in:
 - [parcel-delineation/README.md](./parcel-delineation/README.md)
 
 This section is a good fit when you want to move from exploratory processing to actual predictive workflows in openEO.
+
+## Suggested next steps
+
+Once you are working with ML-oriented workflows, a useful progression is:
+
+1. [60 · Geospatial Embeddings](../60_geospatial-embeddings/README.md) if you want learned feature spaces and embedding-based representations.
+2. [70 · Platform and Large Scale](../70_platform-and-large-scale/README.md) if you need to scale up training, inference, or job orchestration.
+3. [50 · Thematic Notebooks](../50_thematic-notebooks/README.md) if you want domain-specific case studies using the same openEO patterns.
+
+The best next step depends on whether your priority is richer feature representation, operational scale, or a thematic application.
