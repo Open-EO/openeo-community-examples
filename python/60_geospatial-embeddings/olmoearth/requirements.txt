@@ -1,0 +1,8 @@
+# Tested with Python 3.12. No PyTorch or OlmoEarth needed for notebook inference.
+openeo[artifacts]==0.53.0
+onnxruntime==1.30.0
+numpy>=2.0,<3
+rasterio>=1.4,<2
+matplotlib>=3.10,<4
+jupyterlab>=4,<5
+ipykernel>=7,<8

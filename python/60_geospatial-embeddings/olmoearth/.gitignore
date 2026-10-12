@@ -1,0 +1,8 @@
+.venv/
+.venv-runtime/
+__pycache__/
+.ipynb_checkpoints/
+*.onnx
+*.onnx.data
+model/
+results/
