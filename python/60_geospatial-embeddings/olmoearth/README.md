@@ -4,6 +4,25 @@ A step-by-step [notebook](./olmoearth-annual-embeddings.ipynb) that builds twelv
 
 An embedding is a reusable learned feature vector, **not a land-cover label**. All months and both modalities attend jointly and bidirectionally within each spatial tile before valid-only annual pooling. The notebook shows monthly RGB/radar observations, missing-data coverage, and an annual PCA map with a georeferenced RGB overlay. No retraining or downstream accuracy claim is involved.
 
+## About OlmoEarth
+
+[OlmoEarth](https://github.com/allenai/olmoearth_pretrain) is Ai2's family of **multimodal, spatiotemporal foundation models for Earth observation**. Its pretrained encoders transform satellite images or time series into reusable learned features for downstream tasks such as classification and segmentation. The official models support Sentinel-1, Sentinel-2 and Landsat imagery; this example uses **Sentinel-1 and Sentinel-2 only**.
+
+The [official v1.2 model overview](https://github.com/allenai/olmoearth_pretrain#model-summary) lists the following encoder sizes:
+
+| v1.2 variant | Encoder parameters |
+|---|---:|
+| **Nano — used here** | **1.7M** |
+| Tiny | 12.5M |
+| Small | 35.6M |
+| Base | 114M |
+
+These are upstream encoder parameter counts, not ONNX file sizes. We choose **Nano**, the smallest v1.2 variant, for a compact CPU-based ONNX demonstration—not because it is necessarily the best model for every downstream task. Larger variants are **not drop-in replacements** for this example's fixed export and tensor contract.
+
+We retain the pretrained weights. The openEO-compatible input interface and valid-only annual pooling are adaptations in this example, **not a separately trained official annual OlmoEarth model**. They turn twelve monthly Sentinel-1/2 observations into one 128-dimensional feature vector per 40 m patch; the notebook visualizes those features with PCA rather than predicting land-cover classes.
+
+For model details, see the [Nano model card](https://huggingface.co/allenai/OlmoEarth-v1_2-Nano) and [OlmoEarth v1.2 technical report](https://huggingface.co/papers/2605.20804). The [restricted-use licensing terms](#licensing) apply to these model artifacts and derivatives.
+
 ## Requirements
 
 - Python **3.12** and the dependencies below.
