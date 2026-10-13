@@ -1,4 +1,4 @@
-"""Offline export of joint 12-month OlmoEarth Nano S1/S2 annual embeddings.
+"""Offline export of joint 12-month OlmoEarth v1.2 S1/S2 annual embeddings.
 
 Based on Ai2's OlmoEarth encoder. Artifacts and derivatives retain the use
 restrictions in README.md#licensing and the OlmoEarth Artifact License:
@@ -19,21 +19,46 @@ from olmoearth_pretrain.datatypes import MaskedOlmoEarthSample, MaskValue
 from olmoearth_pretrain.model_loader import load_model_from_path
 from olmoearth_pretrain.nn.flexi_vit import Encoder
 
-from openeo_olmoearth import INPUT_BANDS, MODEL_NAME, OUTPUT_BANDS, S2_BANDS
+from openeo_olmoearth import MODELS, S2_BANDS, model_name, output_bands, validate_contract
 
 ROOT = Path(__file__).resolve().parent
-SOURCE_REPO = "allenai/OlmoEarth-v1_2-Nano"
-SOURCE_REVISION = "e1f693ae2a7d5b57871a978e9d09e22d05206747"
-SOURCE_SHA256 = "2773fca48c238d78adde5e83b7d140a63d36c9e5f73746b8dbadaed743020378"
 
 
-def load_pretrained_model() -> torch.nn.Module:
+def file_sha256(path: Path) -> str:
+    with path.open("rb") as file:
+        return hashlib.file_digest(file, "sha256").hexdigest()
+
+
+def load_pretrained_model(variant: str = "nano") -> torch.nn.Module:
     """Download only the pinned config/weights and verify the trusted source weights."""
-    config = hf_hub_download(SOURCE_REPO, "config.json", revision=SOURCE_REVISION)
-    weights = hf_hub_download(SOURCE_REPO, "weights.pth", revision=SOURCE_REVISION)
-    if hashlib.sha256(Path(weights).read_bytes()).hexdigest() != SOURCE_SHA256:
+    model_name(variant)
+    source = MODELS[variant]
+    config = hf_hub_download(source["repo"], "config.json", revision=source["revision"])
+    weights = hf_hub_download(source["repo"], "weights.pth", revision=source["revision"])
+    if file_sha256(Path(weights)) != source["sha256"]:
         raise RuntimeError("OlmoEarth source weights failed SHA-256 verification")
     return load_model_from_path(Path(config).parent).eval()
+
+
+def build_stac(variant: str, embedding_size: int, filename: str) -> dict:
+    """Generate variant metadata from the shared, safe Nano descriptor."""
+    stac = json.loads((ROOT / "olmoearth-v1_2-nano-annual.stac.json").read_text())
+    stac["id"] = model_name(variant)
+    stac["properties"]["mlm:name"] = f"OlmoEarth v1.2 {variant.title()} joint Sentinel-1/2 annual patch embeddings"
+    output = stac["properties"]["mlm:output"][0]
+    output["shape"] = output["result"]["shape"] = [1, embedding_size, 8, 8]
+    output["bands"] = output_bands(embedding_size)
+    source = MODELS[variant]
+    url = f"https://huggingface.co/{source['repo']}"
+    stac["links"] = [
+        {"rel": "license", "href": f"{url}/blob/{source['revision']}/LICENSE.txt",
+         "title": "OlmoEarth Artifact License (restricted uses)"},
+        {"rel": "derived_from", "href": f"{url}/tree/{source['revision']}",
+         "title": f"Pinned Ai2 OlmoEarth v1.2 {variant.title()} source checkpoint"},
+    ]
+    stac["assets"]["model"]["href"] = filename
+    validate_contract(stac, variant)
+    return stac
 
 
 class AnnualPatchEmbeddings(torch.nn.Module):
@@ -42,7 +67,7 @@ class AnnualPatchEmbeddings(torch.nn.Module):
     def __init__(self, encoder: Encoder):
         super().__init__()
         assert not encoder.use_flash_attn and not encoder.has_register_tokens
-        assert encoder.embedding_projector is None and encoder.embedding_size == 128
+        assert encoder.embedding_projector is None
         assert S2_BANDS == list(Modality.SENTINEL2_L2A.band_order)
         assert all(encoder.tokenization_config.get_num_bandsets(m.name) == 1 for m in
                    [Modality.SENTINEL2_L2A, Modality.SENTINEL1])
@@ -117,10 +142,12 @@ class AnnualPatchEmbeddings(torch.nn.Module):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / f"{MODEL_NAME}.onnx")
+    parser.add_argument("--variant", choices=MODELS, default="nano")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    output = args.output or ROOT / f"{model_name(args.variant)}.onnx"
     torch.set_num_threads(4)
-    model = load_pretrained_model()
+    model = load_pretrained_model(args.variant)
     assert isinstance(model.encoder, Encoder)
     wrapper = AnnualPatchEmbeddings(model.encoder).eval()
     raster = torch.ones(1, 204, 32, 32)
@@ -130,18 +157,14 @@ def main() -> None:
     months[:, :, 15] = torch.arange(12).reshape(1, 12, 1, 1)
     months[:, :, 16] = 2024
     torch.onnx.export(
-        wrapper, (raster,), args.output, dynamo=True, opset_version=18,
+        wrapper, (raster,), output, dynamo=True, opset_version=18,
         external_data=False, input_names=["raster"], output_names=["annual_embeddings"],
     )
-    onnx.checker.check_model(str(args.output))
-    stac = json.loads((ROOT / f"{MODEL_NAME}.stac.json").read_text())
-    for tensor, bands in [(stac["properties"]["mlm:input"][0], INPUT_BANDS),
-                          (stac["properties"]["mlm:output"][0], OUTPUT_BANDS)]:
-        assert tensor["bands"] == bands
-    stac["assets"]["model"]["href"] = args.output.name
-    args.output.with_suffix(".stac.json").write_text(json.dumps(stac, indent=2) + "\n")
-    print(f"Saved {args.output} (SHA-256 {hashlib.sha256(args.output.read_bytes()).hexdigest()})")
-    print(f"Check it with: python check_olmoearth_onnx.py --model {args.output}")
+    onnx.checker.check_model(str(output))
+    stac = build_stac(args.variant, model.encoder.embedding_size, output.name)
+    output.with_suffix(".stac.json").write_text(json.dumps(stac, indent=2) + "\n")
+    print(f"Saved {output} (SHA-256 {file_sha256(output)})")
+    print(f"Check it with: python check_olmoearth_onnx.py --variant {args.variant} --model {output}")
 
 
 if __name__ == "__main__":

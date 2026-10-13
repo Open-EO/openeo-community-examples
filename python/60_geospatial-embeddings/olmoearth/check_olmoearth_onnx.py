@@ -5,6 +5,7 @@ License restrictions described in README.md#licensing.
 """
 
 import argparse
+from copy import deepcopy
 import json
 import time
 from pathlib import Path
@@ -17,8 +18,8 @@ from olmoearth_pretrain.data.constants import Modality
 from olmoearth_pretrain.data.normalize import Normalizer, Strategy
 from olmoearth_pretrain.nn.flexi_vit import Encoder
 
-from export_olmoearth_to_onnx import AnnualPatchEmbeddings, load_pretrained_model
-from openeo_olmoearth import INPUT_BANDS, MODEL_NAME, OUTPUT_BANDS, calendar_months, patch_validity
+from export_olmoearth_to_onnx import AnnualPatchEmbeddings, build_stac, load_pretrained_model
+from openeo_olmoearth import MODELS, calendar_months, model_name, patch_validity, validate_contract
 
 ROOT = Path(__file__).resolve().parent
 
@@ -32,32 +33,50 @@ def synthetic_raster() -> torch.Tensor:
     return torch.from_numpy(months.reshape(1, 204, 32, 32))
 
 
+def check_variant_contracts() -> None:
+    """Small metadata fixtures also reject mixed variants and broken nested shapes."""
+    for variant, width in [("nano", 128), ("tiny", 192), ("small", 384), ("base", 768)]:
+        stac = build_stac(variant, width, f"{model_name(variant)}.onnx")
+        assert len(validate_contract(stac, variant)) == width
+        other = next(name for name in MODELS if name != variant)
+        bad_shape = deepcopy(stac)
+        bad_shape["properties"]["mlm:output"][0]["result"]["shape"] = [1, width + 1, 8, 8]
+        bad_source = deepcopy(stac)
+        next(link for link in bad_source["links"] if link["rel"] == "derived_from")["href"] += "-wrong"
+        for descriptor, selected in [(stac, other), (bad_shape, variant), (bad_source, variant)]:
+            try:
+                validate_contract(descriptor, selected)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError("Invalid variant contract was accepted")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", type=Path, default=ROOT / f"{MODEL_NAME}.onnx")
+    parser.add_argument("--variant", choices=MODELS, default="nano")
+    parser.add_argument("--model", type=Path)
     args = parser.parse_args()
+    model_path = args.model or ROOT / f"{model_name(args.variant)}.onnx"
+    check_variant_contracts()
     torch.set_num_threads(4)
-    onnx.checker.check_model(str(args.model))
+    onnx.checker.check_model(str(model_path))
     options = ort.SessionOptions()
     options.intra_op_num_threads = 4
-    session = ort.InferenceSession(str(args.model), options, providers=["CPUExecutionProvider"])
-    contract = json.loads(args.model.with_suffix(".stac.json").read_text())["properties"]
+    session = ort.InferenceSession(str(model_path), options, providers=["CPUExecutionProvider"])
+    stac = json.loads(model_path.with_suffix(".stac.json").read_text())
+    bands = validate_contract(stac, args.variant)
+    assert len(session.get_inputs()) == len(session.get_outputs()) == 1
     inp, out = session.get_inputs()[0], session.get_outputs()[0]
     assert inp.name == "raster" and inp.shape == [1, 204, 32, 32] and inp.type == "tensor(float)"
-    assert out.name == "annual_embeddings" and out.shape == [1, 128, 8, 8] and out.type == "tensor(float)"
-    for actual, declared, nested, bands in [(inp, contract["mlm:input"][0], "input", INPUT_BANDS),
-                                           (out, contract["mlm:output"][0], "result", OUTPUT_BANDS)]:
-        assert actual.shape == declared["shape"] == declared[nested]["shape"]
-        assert declared["bands"] == bands
-        assert declared["data_type"] == declared[nested]["data_type"] == "float32"
-        assert declared["dim_order"] == declared[nested]["dim_order"] == ["batch", "bands", "height", "width"]
+    assert out.name == "annual_embeddings" and out.shape == [1, len(bands), 8, 8] and out.type == "tensor(float)"
     intervals, timestamps = calendar_months(2024)
     assert len(intervals) == len(timestamps) == 12
     assert intervals[1] == ["2024-02-01", "2024-03-01"] and timestamps[1] == [15, 1, 2024]
     assert intervals[0][0] == "2024-01-01" and intervals[-1][1] == "2025-01-01"
     assert [t[1] for t in timestamps] == list(range(12))
-    model = load_pretrained_model()
-    assert isinstance(model.encoder, Encoder)
+    model = load_pretrained_model(args.variant)
+    assert isinstance(model.encoder, Encoder) and model.encoder.embedding_size == len(bands)
     wrapper = AnnualPatchEmbeddings(model.encoder).eval()
     full = synthetic_raster()
     sample = wrapper.prepare_sample(full)
@@ -128,12 +147,13 @@ def main() -> None:
             else:
                 assert np.isfinite(actual).all()
             error = np.nanmax(np.abs(actual - expected)) if label != "empty" else 0
-            print(f"{label}: {actual.shape}, encoder max error {error:.6g}, {time.monotonic() - started:.2f}s")
+            ort_error = np.nanmax(np.abs(remote - expected)) if label != "empty" else 0
+            print(f"{label}: {actual.shape}, encoder max error {error:.6g}, ONNX max error {ort_error:.6g}, {time.monotonic() - started:.2f}s")
         # A changed later month affects the annual joint representation.
         changed = full.clone()
         changed.reshape(1, 12, 17, 32, 32)[:, 11, :14] += 2
         assert baseline is not None and not np.allclose(wrapper(changed).numpy(), baseline)
-    print("Verified calendar, normalization, masking, annual pooling and ONNX parity")
+    print(f"Verified {args.variant}: variant contracts, calendar, normalization, masking, annual pooling and ONNX parity")
 
 
 if __name__ == "__main__":
