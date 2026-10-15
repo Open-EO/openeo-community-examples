@@ -82,7 +82,7 @@ Keep the ONNX file and matching STAC descriptor next to the notebook. Neither it
 1. Keep Mol/2024 defaults for the first run and leave `JOB_ID = None`.
 2. Run the setup, OIDC authentication and processing cells in order. The graph is lazy; loading and compositing are deferred until execution.
 3. Run upload/submission **once**, note your printed job ID, and **pause**. Submission does not wait. Do not expect a first uninterrupted “Run All” to finish the download cells while the asynchronous job is still running.
-4. Rerun status later. When it is `finished`, continue to download, checks and plots.
+4. Rerun status later. When it is `finished`, continue to download, inspect the outputs and plot them.
 5. In a new session, configure **your own** saved `JOB_ID`. Rerun setup/graph cells; upload and submission will be skipped. Reset the identifier if changing the **variant**, year or area, and rerun configuration and subsequent cells. The author's validation job cannot be reused by other accounts.
 
 The model's presigned URL is kept only in memory and can expire. Upload again immediately before a new submission. **Do not print/save the populated STAC descriptor or process graph, or commit tokens, signed URLs, ONNX binaries, model caches or downloaded rasters.** Results and generated binaries are ignored by Git.
@@ -96,7 +96,7 @@ The processing is visible in the notebook rather than hidden in a large helper:
 3. Load descending-orbit Sentinel-1 VV/VH, process sigma0-ellipsoid with COPERNICUS_30 and noise removal, align to the optical grid, compute monthly **linear-power means**, then convert to **dB**.
 4. Pack each month as **12 S2 + 2 S1 + 3 date channels**, so twelve months become **204 float32 bands**. Assert positional order. The model reconstructs time internally; this is not twelve independent inference calls.
 5. Read the selected STAC tensor contract, cross-check ONNX metadata, upload the artifact, explicitly call `cube.process('predict_onnx', ...)`, restore that model's output labels, and submit a variant-titled batch job.
-6. Save and verify a reusable annual feature product, inspect observations/coverage, and visualize relative embedding variation with PCA.
+6. Save a reusable annual feature product, inspect its metadata and monthly observations/coverage, and visualize relative embedding variation with PCA.
 
 CDSE already harmonizes Sentinel-2 baseline DN offsets: **do not subtract another 1000, convert DN to reflectance, or normalize again**. The official OlmoEarth computed normalization is baked into ONNX. There is **no WorldCereal uint16 radar encoding**. Composite midpoint dates are representative dates, not individual capture dates.
 
@@ -118,8 +118,9 @@ Default **32×32 input tiles** keep memory manageable. There is **no spatial ove
 ## Validation and grid handling
 
 - **Local check:** after exporting, run `python check_olmoearth_onnx.py --variant <variant>` to check the tensor/STAC contract, normalization, missing-data handling and parity with the stock PyTorch encoder.
-- **Notebook checks:** saved rasters are checked for CRS, dtype, labels, dates, nodata and numerical agreement with local ONNX Runtime. Packed inputs are exported with **`stitch=True` and `strict_cropping=False`** to retain full boundary inference context for this comparison.
-- **Grid alignment:** the native 40 m output may extend less than one cell beyond the requested AOI. Use the saved raster's actual transform and bounds, not the requested AOI corner or an assumed array size. The plots crop inputs to that footprint without resampling.
+- **Notebook inspection:** both products use the normal GeoTIFF writer. Check bands, dtype, CRS, 10/40 m spacing and valid output coverage, then plot the monthly inputs and annual features. No local model replay is required.
+- **Grid alignment:** the native 40 m output may extend less than one cell beyond the requested AOI. Monthly previews and annual embeddings use their own saved bounds; the overlay does not crop or stretch one array to fit the other. The coverage chart counts valid 10 m input pixels, not model patches.
+- **Maintainer regression check:** `openeo_olmoearth.check_results(...)` retains the backend-versus-local ONNX comparison outside the walkthrough. It requires a separate export of complete inference-tile inputs; the ordinary AOI-cropped preview export is not suitable.
 - **Tested scope:** Nano on the default Mol 2024 footprint; all four variants on a 320 m subset. The saved notebook figures are Nano results. This does not establish large-area performance or downstream accuracy.
 
 ## Limits and interpretation
@@ -127,7 +128,7 @@ Default **32×32 input tiles** keep memory manageable. There is **no spatial ove
 - **Scope limits:** arbitrary AOIs/years and an entirely absent acquisition month have not been validated end-to-end. Empty observations must stay missing, never be replaced by a neighbouring month's data.
 - **Retrospective, not causal:** all months interact before annual pooling; do not use it as an as-of-date forecast without a separately designed strategy.
 - **No seamlessness guarantee:** there is no tile overlap. Coarser-band/radar upsampling adds no independent detail.
-- **Not a large-area export recipe:** stitched inputs, local full-raster parity and plots are for this small demonstration. A large production workflow needs a different export/validation strategy.
+- **Not a large-area export recipe:** exporting all monthly inputs and plotting them in memory are for this small demonstration. Large areas need a separate export and resource plan.
 - **PCA is a visualization:** colors are not classes or accuracy evidence, and separately fitted AOI/year PCAs are not directly comparable. Classification requires a separate model and independent evaluation.
 
 For download problems, check the network and trusted certificate configuration; **never disable certificate verification**. If a firewall blocks Hugging Face's Xet transport, `HF_HUB_DISABLE_XET=1` selects its HTTP path, but valid TLS trust is still required. For backend job failures, inspect logs in the openEO editor before resubmitting.
