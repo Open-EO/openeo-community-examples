@@ -20,6 +20,8 @@ This section shows how to train and apply machine learning models in openEO work
 | [random-forest-forest-fire/random-forest-training.ipynb](./random-forest-forest-fire/random-forest-training.ipynb) | Sentinel-2 + SAR | GLCM UDFs, RF training, model persistence | Full training workflow for a forest-fire Random Forest model. |
 | [random-forest-forest-fire/random-forest-inference-udp.ipynb](./random-forest-forest-fire/random-forest-inference-udp.ipynb) | Sentinel-2 + SAR | UDP creation, model reuse | Wrap the trained model as a shareable UDP for scalable inference. |
 
+No trained model, just a formula? [brdf-predict-onnx](../30_openeo-processing/brdf-predict-onnx/) shows how to compile per-pixel math to ONNX and run it with `predict_onnx`, without a UDF.
+
 ## Typical workflow
 
 1. build or select a feature cube from EO data

@@ -1,0 +1,68 @@
+{
+  "stac_version": "1.1.0",
+  "stac_extensions": [
+    "https://stac-extensions.github.io/mlm/v1.5.1/schema.json",
+    "https://stac-extensions.github.io/raster/v1.1.0/schema.json"
+  ],
+  "type": "Feature",
+  "id": "roy_brdf_ndonnx",
+  "geometry": null,
+  "properties": {
+    "datetime": "2026-10-05T10:57:48Z",
+    "mlm:name": "Roy BRDF NBAR",
+    "mlm:architecture": "Roy c-factor BRDF normalization",
+    "mlm:tasks": ["regression"],
+    "mlm:framework": "ONNX",
+    "mlm:input": [
+      {
+        "name": "x",
+        "bands": ["B02", "B03", "B04", "B8A", "B11", "B12", "sunZenithAngles", "viewZenithMean", "sunAzimuthAngles", "viewAzimuthMean", "theta_s"],
+        "input": {
+          "shape": [11, 32, 32],
+          "dim_order": ["bands", "height", "width"],
+          "data_type": "float64"
+        },
+        "shape": [11, 32, 32],
+        "dim_order": ["bands", "height", "width"],
+        "data_type": "float64"
+      }
+    ],
+    "mlm:output": [
+      {
+        "name": "output",
+        "bands": ["B02", "B03", "B04", "B8A", "B11", "B12"],
+        "tasks": ["regression"],
+        "result": {
+          "shape": [6, 32, 32],
+          "dim_order": ["bands", "height", "width"],
+          "data_type": "float64"
+        },
+        "shape": [6, 32, 32],
+        "dim_order": ["bands", "height", "width"],
+        "data_type": "float64"
+      }
+    ]
+  },
+  "links": [],
+  "assets": {
+    "model": {
+      "href": "roy_brdf_ndonnx.onnx",
+      "type": "application/onnx",
+      "roles": ["mlm:model"],
+      "mlm:artifact_type": "onnx.save",
+      "raster:bands": [
+        {"name": "B02", "data_type": "float64"},
+        {"name": "B03", "data_type": "float64"},
+        {"name": "B04", "data_type": "float64"},
+        {"name": "B8A", "data_type": "float64"},
+        {"name": "B11", "data_type": "float64"},
+        {"name": "B12", "data_type": "float64"},
+        {"name": "sunZenithAngles", "data_type": "float64"},
+        {"name": "viewZenithMean", "data_type": "float64"},
+        {"name": "sunAzimuthAngles", "data_type": "float64"},
+        {"name": "viewAzimuthMean", "data_type": "float64"},
+        {"name": "theta_s", "data_type": "float64"}
+      ]
+    }
+  }
+}

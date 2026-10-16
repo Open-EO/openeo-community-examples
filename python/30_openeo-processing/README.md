@@ -26,6 +26,7 @@ If you want to access an existing product rather than derive a new one, start wi
 | [sentinel1-stats/sentinel1-stats.ipynb](./sentinel1-stats/sentinel1-stats.ipynb) | Sentinel-1 GRD | `apply_dimension`, UDP publishing | Aggregate SAR statistics and publish them as a UDP. |
 | [statistical-data-fill/statistical-data-fill.ipynb](./statistical-data-fill/statistical-data-fill.ipynb) | Sentinel-2 L2A | UDF (Lowess), cloud masking | Fill time-series gaps with Lowess smoothing in a UDF. |
 | [biopar/biopar-service.ipynb](./biopar/biopar-service.ipynb) | Sentinel-2 L2A | UDP execution | Derive biophysical parameters (LAI, FAPAR, FCOVER, …) via the BioPAR UDP. |
+| [brdf-predict-onnx/brdf-predict-onnx.ipynb](./brdf-predict-onnx/brdf-predict-onnx.ipynb) | Sentinel-2 L2A | `predict_onnx`, ndonnx, UDF comparison | Run a BRDF (NBAR) correction as an ONNX model instead of a Python UDF. |
 
 ## Typical workflow
 
