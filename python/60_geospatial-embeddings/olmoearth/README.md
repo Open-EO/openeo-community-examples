@@ -92,7 +92,7 @@ The model's presigned URL is kept only in memory and can expire. Upload again im
 The processing is visible in the notebook rather than hidden in a large helper:
 
 1. Define **twelve half-open calendar-month intervals** and composite midpoint dates `[day, zero-based month, year]`, including leap-year February.
-2. Load all twelve Sentinel-2 model bands in order: `B02,B03,B04,B08,B05,B06,B07,B8A,B11,B12,B01,B09`. Build a WorldCereal-style SCL erosion/dilation mask using a 1 km halo, apply it **before** the monthly median, and align bands to 10 m.
+2. Load all twelve Sentinel-2 model bands in order: `B02,B03,B04,B08,B05,B06,B07,B8A,B11,B12,B01,B09`. Build a WorldCereal-style SCL erosion/dilation mask over the same requested area, apply it **before** the monthly median, and align bands to 10 m.
 3. Load descending-orbit Sentinel-1 VV/VH, process sigma0-ellipsoid with COPERNICUS_30 and noise removal, align to the optical grid, compute monthly **linear-power means**, then convert to **dB**.
 4. Pack each month as **12 S2 + 2 S1 + 3 date channels**, so twelve months become **204 float32 bands**. Assert positional order. The model reconstructs time internally; this is not twelve independent inference calls.
 5. Read the selected STAC tensor contract, cross-check ONNX metadata, upload the artifact, explicitly call `cube.process('predict_onnx', ...)`, restore that model's output labels, and submit a variant-titled batch job.
