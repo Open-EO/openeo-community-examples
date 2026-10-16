@@ -1,0 +1,226 @@
+"""Check the standalone annual export against the stock encoder and ONNX Runtime.
+
+Run after export_olmoearth_to_onnx.py. Artifacts retain the OlmoEarth Artifact
+License restrictions described in README.md#licensing.
+"""
+
+import argparse
+from copy import deepcopy
+from datetime import date
+import json
+import time
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import numpy as np
+import onnx
+import onnxruntime as ort
+import torch
+from olmoearth_pretrain.data.constants import Modality
+from olmoearth_pretrain.data.normalize import Normalizer, Strategy
+from olmoearth_pretrain.nn.flexi_vit import Encoder
+
+from export_olmoearth_to_onnx import AnnualPatchEmbeddings, build_stac, load_pretrained_model
+from openeo_olmoearth import (
+    MODELS, INPUT_BANDS, MONTH_BANDS, calendar_months, model_name,
+    validate_contract, validate_model,
+)
+
+ROOT = Path(__file__).resolve().parent
+
+
+def synthetic_raster() -> torch.Tensor:
+    rng = np.random.default_rng(0)
+    months = np.empty((1, 12, 17, 32, 32), dtype=np.float32)
+    months[:, :, :12] = rng.uniform(500, 7000, (1, 12, 12, 32, 32))
+    months[:, :, 12:14] = rng.normal(-15, 5, (1, 12, 2, 32, 32))
+    months[:, :, 14:] = np.array(calendar_months(2024)[1]).reshape(1, 12, 3, 1, 1)
+    return torch.from_numpy(months.reshape(1, 204, 32, 32))
+
+
+def patch_validity(raw: np.ndarray) -> np.ndarray:
+    """Monthly modality validity [12,2,H/4,W/4]: all pixels/bands must be finite."""
+    assert raw.ndim == 3 and raw.shape[0] == 204
+    h, w = raw.shape[-2:]
+    assert h % 4 == w % 4 == 0
+    months = raw.reshape(12, 17, h, w)
+    validity = []
+    for bands in [months[:, :12], months[:, 12:14]]:
+        finite = np.isfinite(bands).all(axis=1)
+        validity.append(finite.reshape(12, h // 4, 4, w // 4, 4).all(axis=(2, 4)))
+    return np.stack(validity, axis=1)
+
+
+def check_variant_contracts() -> None:
+    """Small metadata fixtures also reject mixed variants and broken nested shapes."""
+    for variant, width in [("nano", 128), ("tiny", 192), ("small", 384), ("base", 768)]:
+        stac = build_stac(variant, width, f"{model_name(variant)}.onnx")
+        assert len(validate_contract(stac, variant)) == width
+        other = next(name for name in MODELS if name != variant)
+        bad_shape = deepcopy(stac)
+        bad_shape["properties"]["mlm:output"][0]["result"]["shape"] = [1, width + 1, 8, 8]
+        bad_source = deepcopy(stac)
+        next(link for link in bad_source["links"] if link["rel"] == "derived_from")["href"] += "-wrong"
+        for descriptor, selected in [(stac, other), (bad_shape, variant), (bad_source, variant)]:
+            try:
+                validate_contract(descriptor, selected)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError("Invalid variant contract was accepted")
+
+
+def check_notebook_inputs() -> None:
+    """Calendar, positional bands and masking examples kept out of the walkthrough."""
+    for year in [2023, 2024]:
+        intervals, timestamps = calendar_months(year)
+        assert len(intervals) == len(timestamps) == 12
+        assert intervals[0][0] == f"{year}-01-01" and intervals[-1][1] == f"{year + 1}-01-01"
+        assert [t[1] for t in timestamps] == list(range(12))
+    assert (date(2024, 3, 1) - date(2024, 2, 1)).days == 29
+    assert INPUT_BANDS == [f"m{month:02d}_{band}" for month in range(1, 13) for band in MONTH_BANDS]
+    assert len(INPUT_BANDS) == 204
+    probe = np.ones((204, 8, 8), dtype=np.float32)
+    probe[0, 0, 0] = np.nan
+    valid = patch_validity(probe)
+    assert not valid[0, 0, 0, 0] and valid[:, 1].all() and valid[1:].all()
+
+
+def check_model_validation() -> None:
+    """Reject bad ONNX names, shapes, types and input/output counts before upload."""
+    inputs = [SimpleNamespace(name="raster", shape=[1, 204, 32, 32], type="tensor(float)")]
+    outputs = [SimpleNamespace(name="annual_embeddings", shape=[1, 128, 8, 8], type="tensor(float)")]
+    with patch("openeo_olmoearth.ort.InferenceSession") as session:
+        session.return_value.get_inputs.return_value = inputs
+        session.return_value.get_outputs.return_value = outputs
+        validate_model(Path("unused.onnx"), 128)
+        for tensors in [inputs, outputs]:
+            for field, invalid in [("name", "wrong"), ("shape", [1, 1, 1, 1]), ("type", "tensor(double)")]:
+                original = getattr(tensors[0], field)
+                setattr(tensors[0], field, invalid)
+                try:
+                    validate_model(Path("unused.onnx"), 128)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"Accepted invalid ONNX {field}")
+                setattr(tensors[0], field, original)
+            tensors.append(tensors[0])
+            try:
+                validate_model(Path("unused.onnx"), 128)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Accepted multiple ONNX tensors")
+            tensors.pop()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--variant", choices=MODELS, default="nano")
+    parser.add_argument("--model", type=Path)
+    args = parser.parse_args()
+    model_path = args.model or ROOT / f"{model_name(args.variant)}.onnx"
+    check_variant_contracts()
+    check_notebook_inputs()
+    check_model_validation()
+    torch.set_num_threads(4)
+    onnx.checker.check_model(str(model_path))
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 4
+    session = ort.InferenceSession(str(model_path), options, providers=["CPUExecutionProvider"])
+    stac = json.loads(model_path.with_suffix(".stac.json").read_text())
+    bands = validate_contract(stac, args.variant)
+    assert len(session.get_inputs()) == len(session.get_outputs()) == 1
+    inp, out = session.get_inputs()[0], session.get_outputs()[0]
+    assert inp.name == "raster" and inp.shape == [1, 204, 32, 32] and inp.type == "tensor(float)"
+    assert out.name == "annual_embeddings" and out.shape == [1, len(bands), 8, 8] and out.type == "tensor(float)"
+    intervals, timestamps = calendar_months(2024)
+    assert len(intervals) == len(timestamps) == 12
+    assert intervals[1] == ["2024-02-01", "2024-03-01"] and timestamps[1] == [15, 1, 2024]
+    assert intervals[0][0] == "2024-01-01" and intervals[-1][1] == "2025-01-01"
+    assert [t[1] for t in timestamps] == list(range(12))
+    model = load_pretrained_model(args.variant)
+    assert isinstance(model.encoder, Encoder) and model.encoder.embedding_size == len(bands)
+    wrapper = AnnualPatchEmbeddings(model.encoder).eval()
+    full = synthetic_raster()
+    sample = wrapper.prepare_sample(full)
+    normalizer = Normalizer(Strategy.COMPUTED)
+    months = full.reshape(1, 12, 17, 32, 32)
+    for modality, raw, image in [
+        (Modality.SENTINEL2_L2A, months[:, :, :12], sample.sentinel2_l2a),
+        (Modality.SENTINEL1, months[:, :, 12:14], sample.sentinel1),
+    ]:
+        raw = raw.permute(0, 3, 4, 1, 2).numpy()
+        expected = normalizer.normalize(modality, raw).astype(np.float32)
+        assert isinstance(image, torch.Tensor)
+        np.testing.assert_array_equal(image.numpy(), expected)
+
+    partial = full.clone()
+    monthly = partial.reshape(1, 12, 17, 32, 32)
+    monthly[:, 1, :12] = float("nan")  # clouded month
+    monthly[:, 3, 12:14] = float("nan")  # absent radar month
+    monthly[:, :, :14, :4, :4] = float("nan")  # no annual evidence at one patch
+    monthly[:, :, :12, 4:8, :4] = float("nan")  # S1-only annual patch
+    monthly[:, 5, 0, 4, 4] = float("inf")  # single invalid pixel masks whole S2 token
+    valid = patch_validity(partial.numpy()[0])
+    assert valid.shape == (12, 2, 8, 8) and not valid[5, 0, 1, 1]
+    missing_s2 = full.clone()
+    missing_s2.reshape(1, 12, 17, 32, 32)[:, :, :12] = float("nan")
+    missing_s1 = full.clone()
+    missing_s1.reshape(1, 12, 17, 32, 32)[:, :, 12:14] = float("nan")
+    empty = full.clone()
+    empty.reshape(1, 12, 17, 32, 32)[:, :, :14] = float("nan")
+    with torch.inference_mode():
+        baseline = None
+        for label, raster in [("complete", full), ("partial", partial), ("S1 only", missing_s2),
+                              ("S2 only", missing_s1), ("empty", empty)]:
+            started = time.monotonic()
+            actual = wrapper(raster).numpy()
+            expected = actual
+            if label != "empty":
+                reference = model.encoder(wrapper.prepare_sample(raster), patch_size=4, fast_pass=False)["tokens_and_masks"]
+                # Independent valid-only annual pooling, using the unmodified encoder.
+                sums, present = [], []
+                for name in ["sentinel2_l2a", "sentinel1"]:
+                    tokens, mask = getattr(reference, name), getattr(reference, f"{name}_mask")
+                    assert isinstance(tokens, torch.Tensor) and isinstance(mask, torch.Tensor)
+                    valid = mask.numpy() == 0
+                    counts = valid.sum(axis=(3, 4))[..., None]
+                    sums.append(np.where(valid[..., None], tokens.numpy(), 0).sum(axis=(3, 4)) / np.maximum(counts, 1))
+                    present.append(counts > 0)
+                count = np.sum(present, axis=0)
+                expected = (np.sum(sums, axis=0) / np.maximum(count, 1)).transpose(0, 3, 1, 2)
+                expected = np.where((count > 0).transpose(0, 3, 1, 2), expected, np.nan)
+                np.testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-4)
+            remote = session.run(None, {"raster": raster.numpy()})[0]
+            assert isinstance(remote, np.ndarray)
+            np.testing.assert_allclose(remote, expected, rtol=1e-3, atol=1e-4)
+            np.testing.assert_array_equal(np.isnan(remote), np.isnan(actual))
+            if label == "complete":
+                assert np.isfinite(actual).all()
+                baseline = actual
+            elif label == "partial":
+                np.testing.assert_array_equal(np.isfinite(actual).all(axis=1)[0], patch_validity(raster.numpy()[0]).any(axis=(0, 1)))
+                # Invalid token contents cannot affect any valid output token.
+                changed = raster.clone().reshape(1, 12, 17, 32, 32)
+                changed[:, 5, :12, 4:8, 4:8] = 999999
+                changed[:, 5, 0, 4, 4] = float("inf")
+                np.testing.assert_allclose(wrapper(changed.reshape_as(raster)).numpy(), actual, rtol=1e-3, atol=1e-4)
+            elif label == "empty":
+                assert np.isnan(actual).all()
+            else:
+                assert np.isfinite(actual).all()
+            error = np.nanmax(np.abs(actual - expected)) if label != "empty" else 0
+            ort_error = np.nanmax(np.abs(remote - expected)) if label != "empty" else 0
+            print(f"{label}: {actual.shape}, encoder max error {error:.6g}, ONNX max error {ort_error:.6g}, {time.monotonic() - started:.2f}s")
+        # A changed later month affects the annual joint representation.
+        changed = full.clone()
+        changed.reshape(1, 12, 17, 32, 32)[:, 11, :14] += 2
+        assert baseline is not None and not np.allclose(wrapper(changed).numpy(), baseline)
+    print(f"Verified {args.variant}: variant contracts, calendar, normalization, masking, annual pooling and ONNX parity")
+
+
+if __name__ == "__main__":
+    main()

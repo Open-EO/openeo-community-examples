@@ -1,0 +1,11 @@
+.venv/
+.venv-runtime/
+__pycache__/
+.ipynb_checkpoints/
+*.onnx
+*.onnx.data
+olmoearth-v1_2-tiny-annual.stac.json
+olmoearth-v1_2-small-annual.stac.json
+olmoearth-v1_2-base-annual.stac.json
+model/
+results/
