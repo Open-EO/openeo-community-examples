@@ -5,9 +5,17 @@ The math is written with numpy-style code in [ndonnx](https://github.com/Quantco
 exported to ONNX, tested locally with `onnxruntime`, and run on the backend with the
 experimental `predict_onnx` process.
 
-The example is the Roy et al. (2016/2017) c-factor BRDF normalization (NBAR) used by
-[sen2like](https://github.com/senbox-org/sen2like): it corrects Sentinel-2 reflectance for
-sun and viewing geometry, so images from different dates can be compared.
+The example implements the Roy et al. (2016/2017) c-factor BRDF normalization (NBAR) used by
+[sen2like](https://github.com/senbox-org/sen2like), intended to reduce the effects of sun and
+viewing geometry on Sentinel-2 reflectance.
+
+> **Scientific limitation: ONNX demonstration, not validated NBAR.** The CDSE
+> Sentinel-2 angle bands used here currently contain tile-level mean sun and viewing
+> angles, not spatially resolved geometry. The same viewing angles are used for all
+> reflectance bands, rather than band/detector-specific angles. This limits the
+> accuracy of the BRDF correction; do not treat the output as scientifically validated
+> NBAR. Accurate viewing-angle handling is tracked in
+> [openeo-geotrellis-extensions#916](https://github.com/Open-EO/openeo-geotrellis-extensions/issues/916).
 
 ## Files
 
