@@ -6,9 +6,12 @@ License restrictions described in README.md#licensing.
 
 import argparse
 from copy import deepcopy
+from datetime import date
 import json
 import time
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 import onnx
@@ -19,7 +22,10 @@ from olmoearth_pretrain.data.normalize import Normalizer, Strategy
 from olmoearth_pretrain.nn.flexi_vit import Encoder
 
 from export_olmoearth_to_onnx import AnnualPatchEmbeddings, build_stac, load_pretrained_model
-from openeo_olmoearth import MODELS, calendar_months, model_name, patch_validity, validate_contract
+from openeo_olmoearth import (
+    MODELS, INPUT_BANDS, MONTH_BANDS, calendar_months, model_name,
+    patch_validity, validate_contract, validate_model,
+)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -52,6 +58,51 @@ def check_variant_contracts() -> None:
                 raise AssertionError("Invalid variant contract was accepted")
 
 
+def check_notebook_inputs() -> None:
+    """Calendar, positional bands and masking examples kept out of the walkthrough."""
+    for year in [2023, 2024]:
+        intervals, timestamps = calendar_months(year)
+        assert len(intervals) == len(timestamps) == 12
+        assert intervals[0][0] == f"{year}-01-01" and intervals[-1][1] == f"{year + 1}-01-01"
+        assert [t[1] for t in timestamps] == list(range(12))
+    assert (date(2024, 3, 1) - date(2024, 2, 1)).days == 29
+    assert INPUT_BANDS == [f"m{month:02d}_{band}" for month in range(1, 13) for band in MONTH_BANDS]
+    assert len(INPUT_BANDS) == 204
+    probe = np.ones((204, 8, 8), dtype=np.float32)
+    probe[0, 0, 0] = np.nan
+    valid = patch_validity(probe)
+    assert not valid[0, 0, 0, 0] and valid[:, 1].all() and valid[1:].all()
+
+
+def check_model_validation() -> None:
+    """Reject bad ONNX names, shapes, types and input/output counts before upload."""
+    inputs = [SimpleNamespace(name="raster", shape=[1, 204, 32, 32], type="tensor(float)")]
+    outputs = [SimpleNamespace(name="annual_embeddings", shape=[1, 128, 8, 8], type="tensor(float)")]
+    with patch("openeo_olmoearth.ort.InferenceSession") as session:
+        session.return_value.get_inputs.return_value = inputs
+        session.return_value.get_outputs.return_value = outputs
+        validate_model(Path("unused.onnx"), 128)
+        for tensors in [inputs, outputs]:
+            for field, invalid in [("name", "wrong"), ("shape", [1, 1, 1, 1]), ("type", "tensor(double)")]:
+                original = getattr(tensors[0], field)
+                setattr(tensors[0], field, invalid)
+                try:
+                    validate_model(Path("unused.onnx"), 128)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"Accepted invalid ONNX {field}")
+                setattr(tensors[0], field, original)
+            tensors.append(tensors[0])
+            try:
+                validate_model(Path("unused.onnx"), 128)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Accepted multiple ONNX tensors")
+            tensors.pop()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--variant", choices=MODELS, default="nano")
@@ -59,6 +110,8 @@ def main() -> None:
     args = parser.parse_args()
     model_path = args.model or ROOT / f"{model_name(args.variant)}.onnx"
     check_variant_contracts()
+    check_notebook_inputs()
+    check_model_validation()
     torch.set_num_threads(4)
     onnx.checker.check_model(str(model_path))
     options = ort.SessionOptions()

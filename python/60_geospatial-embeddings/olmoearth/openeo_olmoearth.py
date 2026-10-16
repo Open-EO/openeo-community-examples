@@ -77,6 +77,22 @@ def validate_contract(stac: dict, variant: str) -> list[str]:
     return bands
 
 
+def validate_model(model_path: Path, embedding_size: int) -> None:
+    """Check the exported ONNX interface before uploading it to the backend."""
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 2
+    session = ort.InferenceSession(str(model_path), options, providers=["CPUExecutionProvider"])
+    for tensors, name, shape in [
+        (session.get_inputs(), "raster", [1, 204, 32, 32]),
+        (session.get_outputs(), "annual_embeddings", [1, embedding_size, 8, 8]),
+    ]:
+        if len(tensors) != 1:
+            raise ValueError(f"Expected one ONNX tensor for {name}")
+        tensor = tensors[0]
+        if tensor.name != name or tensor.shape != shape or tensor.type != "tensor(float)":
+            raise ValueError(f"Expected ONNX {name}: float32 {shape}")
+
+
 def calendar_months(year: int) -> tuple[list[list[str]], list[list[int]]]:
     """Half-open calendar intervals and [day, zero-based month, year] midpoints."""
     starts = [date(year, month, 1) for month in range(1, 13)] + [date(year + 1, 1, 1)]

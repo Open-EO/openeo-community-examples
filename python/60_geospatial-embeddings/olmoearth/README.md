@@ -1,14 +1,12 @@
 # OlmoEarth annual Sentinel-1/2 embeddings with native `predict_onnx`
 
-A step-by-step [notebook](./olmoearth-annual-embeddings.ipynb) that builds twelve monthly Sentinel-1 and Sentinel-2 composites, runs Ai2's pretrained **OlmoEarth v1.2** through openEO's native **`predict_onnx`**, and produces **one annual embedding cube at 40 m**. **Nano is the default (128 bands)**; Tiny, Small and Base produce 192, 384 and 768 bands. Defaults cover a 2.56 × 2.56 km area near VITO in Mol, Belgium, for 2024.
+This [notebook](./olmoearth-annual-embeddings.ipynb) makes an annual map of OlmoEarth features from twelve monthly Sentinel-1 and Sentinel-2 composites. It runs Ai2's pretrained OlmoEarth v1.2 through openEO's native `predict_onnx`. The default example uses Nano over a 2.56 × 2.56 km area in **Mol, Belgium, in 2024**, with output pixels at **40 m**.
 
-An embedding is a reusable learned feature vector, **not a land-cover label**. All months and both modalities attend jointly and bidirectionally within each spatial tile before valid-only annual pooling. The notebook shows monthly RGB/radar observations, missing-data coverage, and an annual PCA map with a georeferenced RGB overlay. No retraining or downstream accuracy claim is involved.
+Each output pixel holds a feature vector, not a land-cover label. The plots show monthly data, coverage and a PCA view of the annual features. The feature cube can be used for classification, clustering or similarity analysis. Models built on these features need training and evaluation for the intended task.
 
 ## About OlmoEarth
 
-[OlmoEarth](https://github.com/allenai/olmoearth_pretrain) is Ai2's family of **multimodal, spatiotemporal foundation models for Earth observation**. Its pretrained encoders transform satellite images or time series into reusable learned features for downstream tasks such as classification and segmentation. The official models support Sentinel-1, Sentinel-2 and Landsat imagery; this example uses **Sentinel-1 and Sentinel-2 only**.
-
-The [official v1.2 model overview](https://github.com/allenai/olmoearth_pretrain#model-summary) lists the following encoder sizes:
+[OlmoEarth](https://github.com/allenai/olmoearth_pretrain) is a family of Earth-observation models from Ai2. The models use observations from different dates and support Sentinel-1, Sentinel-2 and Landsat. This example uses the two Sentinel sensors.
 
 | v1.2 variant | Encoder parameters | Output bands | Approx. ONNX size |
 |---|---:|---:|---:|
@@ -17,22 +15,19 @@ The [official v1.2 model overview](https://github.com/allenai/olmoearth_pretrain
 | Small | 35.6M | 384 | 100 MB |
 | Base | 114M | 768 | 368 MB |
 
-Encoder parameter counts are upstream totals; ONNX sizes refer to this Sentinel-1/2 annual export. We default to **Nano**, the smallest v1.2 variant, for a compact CPU-based ONNX demonstration—not because it is necessarily the best model for every downstream task. Select another variant using the exporter/checker flags and notebook configuration below; use its matching ONNX and STAC pair. The older v1 Large model is outside this example's supported family.
+The parameter counts are from the [official overview](https://github.com/allenai/olmoearth_pretrain#model-summary). File sizes are for the ONNX exports used here. Nano is the smallest export and the default for this CPU example. Larger variants see the same input tiles but need more memory and compute. Switching variants requires retraining any model built on their features.
 
-We retain the pretrained weights. The openEO-compatible input interface and valid-only annual pooling are adaptations in this example, **not a separately trained official annual OlmoEarth model**. They turn twelve monthly Sentinel-1/2 observations into one feature vector per 40 m patch; the notebook visualizes those features with PCA rather than predicting land-cover classes.
-
-For model details, see the [Nano model card](https://huggingface.co/allenai/OlmoEarth-v1_2-Nano) and [OlmoEarth v1.2 technical report](https://huggingface.co/papers/2605.20804). The [restricted-use licensing terms](#licensing) apply to these model artifacts and derivatives.
+The pretrained weights remain unchanged. The example adds an openEO input layout and averages valid monthly features to make annual vectors. This is not an official annual-output model trained by Ai2. Before averaging, the encoder lets all months and both sensors attend to each other within a tile. See the [Nano model card](https://huggingface.co/allenai/OlmoEarth-v1_2-Nano) and [v1.2 report](https://huggingface.co/papers/2605.20804) for more on the pretrained model.
 
 ## Requirements
 
-- Python **3.12** and the dependencies below.
-- A [Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/) account with openEO access and batch-job capacity.
-- The demonstrated CDSE backend, with `SENTINEL2_L2A`, `SENTINEL1_GRD`, `to_scl_dilation_mask`, `sar_backscatter`, `aggregate_temporal`, `convert_data_type`, and experimental **STAC-aware `predict_onnx`**, plus artifact uploads.
-- Read the [licensing section](#licensing) before using or sharing OlmoEarth artifacts or derivatives.
+This example needs Python **3.12** and a [CDSE](https://dataspace.copernicus.eu/) account with openEO access and enough capacity to run a batch job. The example uses CDSE's Sentinel-1/2 collections, cloud masking, SAR processing, experimental STAC support in `predict_onnx`, and artifact uploads. Check those capabilities before using another backend.
 
-Other backends are **not** validated merely because they expose similar process names. No UDF, `udf-dependency-archives`, external-weight archive, GPU, or backend change is needed. Public hosting of the exported model is optional: the notebook uploads the local model as a temporary CDSE artifact.
+No UDF, Python dependency archive or GPU is required. The notebook uploads the ONNX file as a temporary CDSE artifact. Read [Licensing](#licensing) before using or sharing the model or anything derived from it.
 
 ## Quick start
+
+### 1. Export and check the model once
 
 From the repository root:
 
@@ -41,32 +36,19 @@ cd python/60_geospatial-embeddings/olmoearth
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-# Install CPU PyTorch first so the one-off export does not pull a GPU stack.
 python -m pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -r requirements-export.txt
-python export_olmoearth_to_onnx.py
-python check_olmoearth_onnx.py
-jupyter lab olmoearth-annual-embeddings.ipynb
+python export_olmoearth_to_onnx.py --variant nano
+python check_olmoearth_onnx.py --variant nano
 ```
 
-The no-argument commands still select **Nano**. The first export downloads only the selected variant's pinned official `config.json` and `weights.pth`, checks the source weight SHA-256, and writes a **single self-contained ONNX model** (~5.7 MB for Nano) plus matching STAC JSON. Later runs reuse the Hugging Face cache. Hashing streams files rather than reading the roughly 1 GB Base source checkpoint into another memory buffer. No dependency upgrade or external weights sidecar is needed.
+The export script downloads a fixed revision of the selected checkpoint, checks its SHA-256 hash, and writes an ONNX file with all weights included. It also writes the matching STAC description. The check script compares the export with the original PyTorch encoder and tests normalization, missing data, calendar handling and input/output shapes. Both scripts run locally, not as UDFs on the backend.
 
-### Select a variant
+To use Tiny, Small or Base, pass `--variant tiny`, `small` or `base` to both commands, then choose the same variant in the notebook. The files are named `olmoearth-v1_2-<variant>-annual.onnx` and `.stac.json`. For different paths, use `--output PATH` for the export and `--model PATH` for the check, keeping `--variant` the same.
 
-For example, to use Tiny:
+### 2. Run the notebook
 
-```bash
-python export_olmoearth_to_onnx.py --variant tiny
-python check_olmoearth_onnx.py --variant tiny
-```
-
-Use `nano`, `tiny`, `small` or `base` for both commands, then set **`VARIANT = 'tiny'`** (or your selection) in the notebook configuration. Default filenames are `olmoearth-v1_2-<variant>-annual.onnx` and `.stac.json`. The exporter derives output width from the actual checkpoint, generates both flat/nested metadata and labels from the shared Nano baseline, and retains that variant's pinned provenance/license links. The runtime remains PyTorch-free; it validates the selected descriptor against ONNX metadata before upload.
-
-`--output PATH` is supported by the exporter, and `--model PATH` by the checker **alongside the same `--variant`**. Put the resulting files at the notebook's configured paths if using non-default filenames. A mismatched variant or tensor declaration fails validation. Generated Tiny/Small/Base descriptors and all binary models are ignored by Git; only the shared Nano baseline is committed.
-
-**Changing variants changes the feature space.** Do not mix vectors or reuse a classifier trained on another variant; retrain downstream models. All variants retain the same 32×32 input tiles, 320 m context, 4×4 patches, 40 m spacing and twelve-month preprocessing/pooling. Larger encoders do not attend beyond tile boundaries. Larger models require more download, memory and CPU resources; the notebook's 6 GB executor setting is not a guarantee for every variant. See the actual validation scope below.
-
-The notebook itself uses only **`requirements.txt`**. To run it in a separate lightweight environment after exporting elsewhere:
+The export environment can also run the notebook. For a separate environment with just the notebook dependencies:
 
 ```bash
 python3.12 -m venv .venv-runtime
@@ -75,30 +57,29 @@ python -m pip install -r requirements.txt
 jupyter lab olmoearth-annual-embeddings.ipynb
 ```
 
-Keep the ONNX file and matching STAC descriptor next to the notebook. Neither its helper nor its processing cells import PyTorch or OlmoEarth. Activate the matching environment/kernel in Jupyter. Windows users should use their virtual environment's `Scripts` activation path instead of `source`.
+Start Jupyter in this directory and select that environment's kernel. Keep the ONNX file and its matching STAC JSON beside the notebook. The notebook doesn't import PyTorch or OlmoEarth. On Windows, activate the environment through its `Scripts` directory.
 
-### Submit, pause, resume
+### 3. Submit, pause, resume
 
-1. Keep Mol/2024 defaults for the first run and leave `JOB_ID = None`.
-2. Run the setup, OIDC authentication and processing cells in order. The graph is lazy; loading and compositing are deferred until execution.
-3. Run upload/submission **once**, note your printed job ID, and **pause**. Submission does not wait. Do not expect a first uninterrupted “Run All” to finish the download cells while the asynchronous job is still running.
-4. Rerun status later. When it is `finished`, continue to download, inspect the outputs and plot them.
-5. In a new session, configure **your own** saved `JOB_ID`. Rerun setup/graph cells; upload and submission will be skipped. Reset the identifier if changing the **variant**, year or area, and rerun configuration and subsequent cells. The author's validation job cannot be reused by other accounts.
+1. For a first run, keep the defaults and leave `JOB_ID = None`.
+2. Run through the submission cell once, copy the printed job ID, then wait. The job continues on the backend after the cell returns.
+3. Check its status later. When it says `finished`, continue with the download and plots. If it says `error` or `canceled`, read the logs before trying again.
+4. To pick up the job in a new session, put its ID in `JOB_ID` and rerun the setup and graph cells. They won't upload or submit again. Clear the ID when changing the model, area or year.
 
-The model's presigned URL is kept only in memory and can expire. Upload again immediately before a new submission. **Do not print/save the populated STAC descriptor or process graph, or commit tokens, signed URLs, ONNX binaries, model caches or downloaded rasters.** Results and generated binaries are ignored by Git.
+On the first run, “Run All” will normally stop at the download cell because the job hasn't finished yet. Model URLs expire, so upload just before submitting a new job. **Don't print or save the filled-in STAC descriptor, process graph, tokens or signed URLs.** Git ignores generated models, caches and downloaded rasters.
 
-## What the graph teaches
+## Processing
 
-The processing is visible in the notebook rather than hidden in a large helper:
+The notebook includes the code for each step:
 
-1. Define **twelve half-open calendar-month intervals** and composite midpoint dates `[day, zero-based month, year]`, including leap-year February.
-2. Load all twelve Sentinel-2 model bands in order: `B02,B03,B04,B08,B05,B06,B07,B8A,B11,B12,B01,B09`. Build a WorldCereal-style SCL erosion/dilation mask over the same requested area, apply it **before** the monthly median, and align bands to 10 m.
-3. Load descending-orbit Sentinel-1 VV/VH, process sigma0-ellipsoid with COPERNICUS_30 and noise removal, align to the optical grid, compute monthly **linear-power means**, then convert to **dB**.
-4. Pack each month as **12 S2 + 2 S1 + 3 date channels**, so twelve months become **204 float32 bands**. Assert positional order. The model reconstructs time internally; this is not twelve independent inference calls.
-5. Read the selected STAC tensor contract, cross-check ONNX metadata, upload the artifact, explicitly call `cube.process('predict_onnx', ...)`, restore that model's output labels, and submit a variant-titled batch job.
-6. Save a reusable annual feature product, inspect its metadata and monthly observations/coverage, and visualize relative embedding variation with PCA.
+1. Split the year into calendar months and give each a midpoint date, written as `[day, zero-based month, year]`.
+2. Load all twelve Sentinel-2 bands, mask them with SCL erosion/dilation before taking monthly medians, and align them to 10 m.
+3. Load descending Sentinel-1 VV/VH with sigma0-ellipsoid, COPERNICUS_30 and noise removal. Take monthly means in linear power, then convert to dB.
+4. Put each month's **12 S2 bands, 2 S1 bands and 3 date bands** into one raster: 204 float32 bands, in calendar order.
+5. Check the model against its STAC description, upload it, run `predict_onnx`, and set the output band labels.
+6. Save the annual features and monthly inputs, then plot coverage and PCA.
 
-CDSE already harmonizes Sentinel-2 baseline DN offsets: **do not subtract another 1000, convert DN to reflectance, or normalize again**. The official OlmoEarth computed normalization is baked into ONNX. There is **no WorldCereal uint16 radar encoding**. Composite midpoint dates are representative dates, not individual capture dates.
+Keep the input units as they are. CDSE has already corrected Sentinel-2 DN offsets, so **don't subtract another 1000 or divide by 10000**. Don't normalize again either: that's already in the ONNX model. Sentinel-1 inputs should be dB values, not integer-encoded radar data. The dates mark composite midpoints, not individual image captures.
 
 ## Tensor contract and missing data
 
@@ -107,48 +88,33 @@ CDSE already harmonizes Sentinel-2 baseline DN offsets: **do not subtract anothe
 | Input `raster` | `[1, 204, 32, 32]` | float32 |
 | Output `annual_embeddings` | `[1, D, 8, 8]` | float32 |
 
-`D` is **128/192/384/768** for **Nano/Tiny/Small/Base**. Output names run from `embedding_000` to `embedding_<D-1>` (zero-padded to three digits); the selected descriptor supplies the exact label list.
+`D` is 128, 192, 384 or 768 for Nano, Tiny, Small or Base. Pass the matching STAC description to `predict_onnx` so the backend applies the correct output grid. Each 40 m output pixel represents a 4×4 patch of 10 m input pixels.
 
-The input grid is 10 m; a 4×4 patch produces a native 40 m feature vector. **STAC is required for downsampling on the demonstrated backend path**; a bare ONNX URL does not have the same contract. Nested MLM tensor metadata is intentionally duplicated in flat fields for the deployed parser. The descriptor labels the continuous feature output as generic `regression`, not as land-cover predictions.
+Patches with any missing pixel or band are skipped for that sensor and month. Annual pooling averages valid months within each sensor, then the sensors with data. Patches with no data from either sensor produce nodata.
 
-One invalid pixel or band invalidates its complete modality/month patch. Its contents are safely filled before patch interpolation, excluded as attention keys, and excluded from temporal pooling. We average valid months within each modality, then available modalities; no evidence in either modality produces nodata. The fixed-slot attention adapter uses the official encoder components and is checked against the **unmodified** encoder's missing-token handling.
+## Checks and limitations
 
-Default **32×32 input tiles** keep memory manageable. There is **no spatial overlap**, so context stops at 320 m tile boundaries and seams may be visible.
+Backend tests cover Nano on the Mol 2024 example and all four variants on a 320 m subset.
 
-## Validation and grid handling
+- Inference uses fixed 320 m tiles without overlap, so seams are possible.
+- Full-year features include future observations for predictions made partway through the year.
+- PCA plots show feature variation, not land-cover labels or accuracy.
+- The resource settings are for a small example; larger areas may need adjustments.
 
-- **Local check:** after exporting, run `python check_olmoearth_onnx.py --variant <variant>` to check the tensor/STAC contract, normalization, missing-data handling and parity with the stock PyTorch encoder.
-- **Notebook inspection:** both products use the normal GeoTIFF writer. Check bands, dtype, CRS, 10/40 m spacing and valid output coverage, then plot the monthly inputs and annual features. No local model replay is required.
-- **Grid alignment:** the native 40 m output may extend less than one cell beyond the requested AOI. Monthly previews and annual embeddings use their own saved bounds; the overlay does not crop or stretch one array to fit the other. The coverage chart counts valid 10 m input pixels, not model patches.
-- **Maintainer regression check:** `openeo_olmoearth.check_results(...)` retains the backend-versus-local ONNX comparison outside the walkthrough. It requires a separate export of complete inference-tile inputs; the ordinary AOI-cropped preview export is not suitable.
-- **Tested scope:** Nano on the default Mol 2024 footprint; all four variants on a 320 m subset. The saved notebook figures are Nano results. This does not establish large-area performance or downstream accuracy.
+## Files and provenance
 
-## Limits and interpretation
+| File | Purpose |
+|---|---|
+| `olmoearth-annual-embeddings.ipynb` | openEO workflow and plots |
+| `export_olmoearth_to_onnx.py` | Download the model, adapt its inputs and export it locally |
+| `check_olmoearth_onnx.py` | Compare the export with the original encoder and run tests |
+| `openeo_olmoearth.py` | Band names, dates and checks shared by the notebook and scripts |
+| `olmoearth-v1_2-nano-annual.stac.json` | Nano model description; the exporter writes matching files for other variants |
+| `requirements.txt` / `requirements-export.txt` | Notebook dependencies / additional export dependencies |
 
-- **Scope limits:** arbitrary AOIs/years and an entirely absent acquisition month have not been validated end-to-end. Empty observations must stay missing, never be replaced by a neighbouring month's data.
-- **Retrospective, not causal:** all months interact before annual pooling; do not use it as an as-of-date forecast without a separately designed strategy.
-- **No seamlessness guarantee:** there is no tile overlap. Coarser-band/radar upsampling adds no independent detail.
-- **Not a large-area export recipe:** exporting all monthly inputs and plotting them in memory are for this small demonstration. Large areas need a separate export and resource plan.
-- **PCA is a visualization:** colors are not classes or accuracy evidence, and separately fitted AOI/year PCAs are not directly comparable. Classification requires a separate model and independent evaluation.
+The [`MODELS` table](./openeo_olmoearth.py) lists the exact upstream revision and weight hash for each variant. Exported STAC files link to that revision and its license. The masking and compositing follow [this reference graph](https://github.com/WorldCereal/worldcereal-classification/blob/temporary-global-udp-host/src/worldcereal/udp/global-production-udp-no-export-workspace-onnx.json).
 
-For download problems, check the network and trusted certificate configuration; **never disable certificate verification**. If a firewall blocks Hugging Face's Xet transport, `HF_HUB_DISABLE_XET=1` selects its HTTP path, but valid TLS trust is still required. For backend job failures, inspect logs in the openEO editor before resubmitting.
-
-## Files
-
-- `olmoearth-annual-embeddings.ipynb` — explicit pedagogical openEO workflow and plots.
-- `openeo_olmoearth.py` — lightweight pinned model/band/contract/calendar/validity/result-check helpers; no PyTorch imports or hidden preprocessing.
-- `export_olmoearth_to_onnx.py` — offline adapter, pinned official download, SHA-256 verification and ONNX export.
-- `check_olmoearth_onnx.py` — independent stock-PyTorch/ONNX self-check.
-- `olmoearth-v1_2-nano-annual.stac.json` — safe shared baseline; the exporter generates variant-specific contracts with relative artifact links and correct upstream license/provenance.
-- `requirements.txt`, `requirements-export.txt`, `.gitignore` — separate notebook/export dependencies and generated-file exclusions.
-
-## Provenance
-
-- Official sources: [Nano](https://huggingface.co/allenai/OlmoEarth-v1_2-Nano/tree/e1f693ae2a7d5b57871a978e9d09e22d05206747), [Tiny](https://huggingface.co/allenai/OlmoEarth-v1_2-Tiny/tree/12a9fdbfeff905d7e147e7497f9f7a95c518eefc), [Small](https://huggingface.co/allenai/OlmoEarth-v1_2-Small/tree/5dd894799741b60f59dc4b1dbbb758d8afd89062), [Base](https://huggingface.co/allenai/OlmoEarth-v1_2-Base/tree/2e99a734a30e9aeb993aaa39946c6dcf554739e0).
-- All immutable revisions and official `weights.pth` SHA-256 values are in the small [`MODELS` table](./openeo_olmoearth.py); every export verifies its selection. Default Nano SHA-256: `2773fca48c238d78adde5e83b7d140a63d36c9e5f73746b8dbadaed743020378`.
-- Export: `olmoearth-pretrain==0.1.2`, CPU `torch==2.9.1`, opset 18; all weights embedded.
-- Runtime: `openeo[artifacts]==0.53.0`, `onnxruntime==1.30.0`; tested with Python 3.12.
-- Preprocessing reference: [WorldCereal's monthly composite graph](https://github.com/WorldCereal/worldcereal-classification/blob/temporary-global-udp-host/src/worldcereal/udp/global-production-udp-no-export-workspace-onnx.json). We reuse its masking/compositing approach, not its model or integer encoding.
+Tested with Python 3.12, `olmoearth-pretrain==0.1.2`, CPU `torch==2.9.1`, ONNX opset 18, `openeo[artifacts]==0.53.0` and `onnxruntime==1.30.0`. Binary models and results aren't committed.
 
 ## Licensing
 
