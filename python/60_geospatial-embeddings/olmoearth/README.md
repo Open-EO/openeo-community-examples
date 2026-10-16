@@ -27,7 +27,7 @@ No UDF, Python dependency archive or GPU is required. The notebook uploads the O
 
 ## Quick start
 
-### 1. Export and check the model once
+### 1. Export the model once
 
 From the repository root:
 
@@ -39,12 +39,19 @@ python -m pip install --upgrade pip
 python -m pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -r requirements-export.txt
 python export_olmoearth_to_onnx.py --variant nano
+```
+
+The export script downloads a fixed revision of the selected checkpoint, checks its SHA-256 hash, and writes an ONNX file with all weights included. It also writes the matching STAC description. It runs locally, not as a UDF on the backend.
+
+To use Tiny, Small or Base, pass `--variant tiny`, `small` or `base` to the export command, then choose the same variant in the notebook. The files are named `olmoearth-v1_2-<variant>-annual.onnx` and `.stac.json`. For a different output path, use `--output PATH`.
+
+**Optional local check:** after changing the adapter, run the checker in the export environment. It compares the export with the original PyTorch encoder and tests normalization, missing data, calendar handling and input/output shapes. This step isn't required to run the notebook.
+
+```bash
 python check_olmoearth_onnx.py --variant nano
 ```
 
-The export script downloads a fixed revision of the selected checkpoint, checks its SHA-256 hash, and writes an ONNX file with all weights included. It also writes the matching STAC description. The check script compares the export with the original PyTorch encoder and tests normalization, missing data, calendar handling and input/output shapes. Both scripts run locally, not as UDFs on the backend.
-
-To use Tiny, Small or Base, pass `--variant tiny`, `small` or `base` to both commands, then choose the same variant in the notebook. The files are named `olmoearth-v1_2-<variant>-annual.onnx` and `.stac.json`. For different paths, use `--output PATH` for the export and `--model PATH` for the check, keeping `--variant` the same.
+Use the same `--variant` as the export and `--model PATH` for a different model path.
 
 ### 2. Run the notebook
 
@@ -107,7 +114,7 @@ Backend tests cover Nano on the Mol 2024 example and all four variants on a 320 
 |---|---|
 | `olmoearth-annual-embeddings.ipynb` | openEO workflow and plots |
 | `export_olmoearth_to_onnx.py` | Download the model, adapt its inputs and export it locally |
-| `check_olmoearth_onnx.py` | Compare the export with the original encoder and run tests |
+| `check_olmoearth_onnx.py` | Optional local tests against the original encoder |
 | `openeo_olmoearth.py` | Band names, dates and checks shared by the notebook and scripts |
 | `olmoearth-v1_2-nano-annual.stac.json` | Nano model description; the exporter writes matching files for other variants |
 | `requirements.txt` / `requirements-export.txt` | Notebook dependencies / additional export dependencies |

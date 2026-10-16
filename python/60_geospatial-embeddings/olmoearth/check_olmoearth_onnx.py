@@ -24,7 +24,7 @@ from olmoearth_pretrain.nn.flexi_vit import Encoder
 from export_olmoearth_to_onnx import AnnualPatchEmbeddings, build_stac, load_pretrained_model
 from openeo_olmoearth import (
     MODELS, INPUT_BANDS, MONTH_BANDS, calendar_months, model_name,
-    patch_validity, validate_contract, validate_model,
+    validate_contract, validate_model,
 )
 
 ROOT = Path(__file__).resolve().parent
@@ -37,6 +37,19 @@ def synthetic_raster() -> torch.Tensor:
     months[:, :, 12:14] = rng.normal(-15, 5, (1, 12, 2, 32, 32))
     months[:, :, 14:] = np.array(calendar_months(2024)[1]).reshape(1, 12, 3, 1, 1)
     return torch.from_numpy(months.reshape(1, 204, 32, 32))
+
+
+def patch_validity(raw: np.ndarray) -> np.ndarray:
+    """Monthly modality validity [12,2,H/4,W/4]: all pixels/bands must be finite."""
+    assert raw.ndim == 3 and raw.shape[0] == 204
+    h, w = raw.shape[-2:]
+    assert h % 4 == w % 4 == 0
+    months = raw.reshape(12, 17, h, w)
+    validity = []
+    for bands in [months[:, :12], months[:, 12:14]]:
+        finite = np.isfinite(bands).all(axis=1)
+        validity.append(finite.reshape(12, h // 4, 4, w // 4, 4).all(axis=(2, 4)))
+    return np.stack(validity, axis=1)
 
 
 def check_variant_contracts() -> None:
