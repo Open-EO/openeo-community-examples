@@ -1,0 +1,7 @@
+# Additional dependencies for offline export and its stock-PyTorch checker.
+# Install the CPU torch wheel first as explained in README.md.
+-r requirements.txt
+torch==2.9.1
+olmoearth-pretrain==0.1.2
+onnx==1.23.2
+onnxscript==0.7.2
