@@ -25,6 +25,7 @@ Each subfolder is named after the product it accesses, with the exception of [ac
 | [clms/clms-layers.ipynb](./clms/clms-layers.ipynb) | CLMS burnt area, soil moisture | `load_collection`, masking | Access CLMS layers for a wildfire case study. |
 | [global-flood-monitoring/global-flood-monitoring.ipynb](./global-flood-monitoring/global-flood-monitoring.ipynb) | Copernicus GFM + GHSL | `load_collection`, spatial ops | Load GFM and estimate flood-affected population. |
 | [worldcereal/worldcereal.ipynb](./worldcereal/worldcereal.ipynb) | ESA WorldCereal | `merge_cubes`, temporal reduce | Combine maize and winter cereal WorldCereal layers. |
+| [iperlite/load-iperlite-stac.ipynb](./iperlite/load-iperlite-stac.ipynb) | IPERLITE hyperspectral L1C / L2A (Terrascope STAC) | STAC catalogue discovery, `load_stac` | Browse the IPERLITE collections in the Terrascope STAC catalogue and load a hyperspectral subset for a region of interest. |
 | [access-stac-catalogs/load-stac-item.ipynb](./access-stac-catalogs/load-stac-item.ipynb) | Custom GeoTIFF via STAC | `load_stac` | Build a STAC item for your own file and load it. |
 | [access-stac-catalogs/load-biomass-stac.ipynb](./access-stac-catalogs/load-biomass-stac.ipynb) | External biomass STAC | `load_stac`, `merge_cubes` | Combine an external biomass dataset with Sentinel-2. |
 | [access-stac-catalogs/load-landsat-stac.ipynb](./access-stac-catalogs/load-landsat-stac.ipynb) | Landsat 8 STAC | `load_stac` | Access Landsat 8 through a STAC catalogue. |

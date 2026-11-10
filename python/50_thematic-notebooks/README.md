@@ -12,6 +12,8 @@ End-to-end applied use cases. Each notebook stitches data access, processing, an
 | [flood-mapping/flood-sar.ipynb](./flood-mapping/flood-sar.ipynb) | Flood | Sentinel-1 | SAR backscatter change to map flooded areas. |
 | [forest-fire/forest-fire.ipynb](./forest-fire/forest-fire.ipynb) | Wildfire | Sentinel-2 | Pre/near-real-time/post-fire NBR using `MultiResult`. |
 | [heatwave/heatwave-nl.ipynb](./heatwave/heatwave-nl.ipynb) | Heatwave | Sentinel-3 LST | Detect Dutch-plan heatwaves from thermal data. |
+| [iperlite-wildfire/iperlite-wildfire.ipynb](./iperlite-wildfire/iperlite-wildfire.ipynb) | Wildfire | IPERLITE L1C (hyperspectral) | Pre/post-fire comparison of five spectral indices (NDVI, CIre, PRI, CAD680, BAI) over the Sierra Calderona fire using `load_stac`. |
+| [iperlite-rice-phenology/iperlite-rice-phenology.ipynb](./iperlite-rice-phenology/iperlite-rice-phenology.ipynb) | Crop phenology | IPERLITE L2A (hyperspectral) | Track rice growth and ripening in the Camargue from three-date spectral index change (growth and ripening differences). |
 | [land-cover-statistics/land-cover-country-lcfm.ipynb](./land-cover-statistics/land-cover-country-lcfm.ipynb) | Land cover | LCFM + Eurostat | Zonal land-cover statistics per region. |
 | [landslide-ndvi/landslide-ndvi.ipynb](./landslide-ndvi/landslide-ndvi.ipynb) | Landslide | Sentinel-2 | NDVI difference + thresholding for landslide detection. |
 | [drought-nddi/drought-nddi.ipynb](./drought-nddi/drought-nddi.ipynb) | Drought | Sentinel-2 | Normalised Difference Drought Index via awesome-spectral-indices. |
