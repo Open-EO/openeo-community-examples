@@ -150,7 +150,7 @@ def date_score_calc(day: openeo.DataCube) -> openeo.DataCube:
     """
     return day.subtract(15).multiply(0.2
                 ).multiply(day.subtract(15).multiply(0.2)
-                ).multiply(-0.5).exp().multiply(0.07978845)  # Until 'power' and 'divide' are fixed, use this workaround
+                ).multiply(-0.5).exp()  # Until 'power' and 'divide' are fixed, use this workaround
 
 def max_score_selection(score: openeo.DataCube) -> openeo.DataCube:
     """
