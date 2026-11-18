@@ -9,10 +9,10 @@ Each numbered folder groups notebooks by what the user is trying to *do*, not by
 | Folder | What lives here |
 |---|---|
 | [10_getting-started](./10_getting-started/) | Start here. Your first openEO connection, authentication, a datacube, and a download. |
-| [20_data-discovery](./20_data-discovery/) | **Access** existing products (MODIS, PROBA-V, CLMS, WorldCereal, Global Flood Monitoring, external STAC catalogs). |
+| [20_data-discovery](./20_data-discovery/) | **Access** existing products (MODIS, PROBA-V, CLMS, WorldCereal, Global Flood Monitoring, IPERLITE, external STAC catalogs). |
 | [30_openeo-processing](./30_openeo-processing/) | **Produce** and transform datacubes: composites, masks, merges, UDFs, UDPs, terrain, gap-filling. |
 | [40_machine-learning](./40_machine-learning/) | Train and apply ML models (Random Forest, ONNX, U-Net) inside openEO via UDFs. |
-| [50_thematic-notebooks](./50_thematic-notebooks/) | End-to-end use cases (floods, fires, heatwaves, droughts, land cover, soil moisture, …). |
+| [50_thematic-notebooks](./50_thematic-notebooks/) | End-to-end use cases (floods, fires, heatwaves, droughts, land cover, soil moisture, crop phenology, …). |
 | [60_geospatial-embeddings](./60_geospatial-embeddings/) | Compression and representation learning workflows (CORSA, PCA, TESSERA). |
 | [70_platform-and-large-scale](./70_platform-and-large-scale/) | Federation, batch orchestration, and monitoring across backends. |
 
